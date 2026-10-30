@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './config/db.js';
 import targetRoutes from './routes/targetRoutes.js';
+import { initScheduler } from './scheduler/scheduler.js';
 
 dotenv.config();
 
@@ -46,4 +47,5 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
+    initScheduler();
 });
