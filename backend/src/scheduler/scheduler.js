@@ -60,18 +60,14 @@ const processTarget = async (target) => {
     }
 };
 
-// Target ko schedule/register karne ka function
 export const scheduleTarget = (target) => {
-    // Agar pehle se job chal rahi hai toh usay stop karein (Update/Cancel case)
     if (activeJobs.has(target.id)) {
         activeJobs.get(target.id).stop();
         activeJobs.delete(target.id);
     }
 
-    // Agar target disabled hai, toh mazeed schedule na karein
     if (!target.is_enabled) return;
 
-    // Interval ko cron format mein convert karein
     let cronExpression = `*/${target.check_interval_seconds} * * * * *`;
     if (target.check_interval_seconds >= 60) {
         cronExpression = `* * * * *`; 
