@@ -31,4 +31,4 @@ router.patch('/:id/enabled', toggleTargetEnabled);
 router.get('/:id/history', getTargetHistory);
 router.get('/:id/uptime', getTargetUptime);
 
-export default router;
+export default router; 
