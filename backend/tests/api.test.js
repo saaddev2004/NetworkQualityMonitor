@@ -74,3 +74,63 @@ test('health returns 503 (not a crash) when the DB is unreachable', async () => 
         pool.query = originalQuery;
     }
 });
+
+test('GET /targets with invalid status -> 400 INVALID_STATUS', async () => {
+    const res = await send('GET', '/targets?status=invalid');
+    assert.equal(res.status, 400);
+    const json = await res.json();
+    assert.equal(json.error.code, 'INVALID_STATUS');
+    assert.match(json.error.message, /invalid status/i);
+
+    const resEmpty = await send('GET', '/targets?status=');
+    assert.equal(resEmpty.status, 400);
+
+    const resUnknown = await send('GET', '/targets?status=unknown');
+    assert.equal(resUnknown.status, 400);
+});
+
+test('GET /targets without status parameter returns all targets', async () => {
+    const originalQuery = pool.query;
+    let capturedSql;
+    pool.query = async (sql) => {
+        capturedSql = sql;
+        return [[
+            { id: 1, name: 'Target A', current_status: 'online' },
+            { id: 2, name: 'Target B', current_status: 'offline' }
+        ]];
+    };
+    try {
+        const res = await send('GET', '/targets');
+        assert.equal(res.status, 200);
+        const data = await res.json();
+        assert.equal(data.length, 2);
+        assert.match(capturedSql, /SELECT \* FROM monitored_targets ORDER BY created_at DESC/i);
+        assert.doesNotMatch(capturedSql, /WHERE current_status/i);
+    } finally {
+        pool.query = originalQuery;
+    }
+});
+
+for (const status of ['online', 'warning', 'critical', 'offline']) {
+    test(`GET /targets?status=${status} returns only ${status} targets`, async () => {
+        const originalQuery = pool.query;
+        let capturedSql;
+        let capturedParams;
+        pool.query = async (sql, params) => {
+            capturedSql = sql;
+            capturedParams = params;
+            return [[{ id: 1, name: `Target ${status}`, current_status: status }]];
+        };
+        try {
+            const res = await send('GET', `/targets?status=${status}`);
+            assert.equal(res.status, 200);
+            const data = await res.json();
+            assert.equal(data.length, 1);
+            assert.equal(data[0].current_status, status);
+            assert.match(capturedSql, /WHERE current_status = \?/i);
+            assert.deepEqual(capturedParams, [status]);
+        } finally {
+            pool.query = originalQuery;
+        }
+    });
+}

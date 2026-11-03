@@ -7,6 +7,8 @@ import { validateMergedTarget, sendValidationError } from '../middleware/validat
 const notFound = (res) =>
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Target not found' } });
 
+const VALID_STATUSES = new Set(['online', 'warning', 'critical', 'offline']);
+
 // Create a new target (POST /targets)
 export const createTarget = async (req, res, next) => {
     try {
@@ -36,8 +38,28 @@ export const createTarget = async (req, res, next) => {
 };
 
 // Get all targets (GET /targets)
+// Supports optional ?status=online, warning, critical, offline
 export const getTargets = async (req, res, next) => {
     try {
+        const { status } = req.query;
+
+        if (status !== undefined) {
+            if (typeof status !== 'string' || !VALID_STATUSES.has(status)) {
+                return res.status(400).json({
+                    error: {
+                        code: 'INVALID_STATUS',
+                        message: 'Invalid status value. Allowed values are: online, warning, critical, offline'
+                    }
+                });
+            }
+
+            const [rows] = await pool.query(
+                'SELECT * FROM monitored_targets WHERE current_status = ? ORDER BY created_at DESC',
+                [status]
+            );
+            return res.status(200).json(rows);
+        }
+
         const [rows] = await pool.query('SELECT * FROM monitored_targets ORDER BY created_at DESC');
         res.status(200).json(rows);
     } catch (error) {
