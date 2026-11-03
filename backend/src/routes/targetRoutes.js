@@ -1,20 +1,18 @@
 import express from 'express';
-import { getDashboardSummary } from '../controllers/dashboardController.js';
-import { 
-    createTarget, 
-    getTargets, 
+import {
+    createTarget,
+    getTargets,
     runManualCheck,
-    getTargetById,      
-    updateTarget,       
-    deleteTarget,       
-    toggleTargetEnabled 
-} from '../controllers/targetController.js'; 
-import { validateTarget } from '../middleware/validate.js';
+    getTargetById,
+    updateTarget,
+    deleteTarget,
+    toggleTargetEnabled
+} from '../controllers/targetController.js';
+import { validateTarget, validateTargetUpdate, validateEnabledToggle } from '../middleware/validate.js';
 import { getTargetHistory, getTargetUptime } from '../controllers/historyController.js';
 import { exportTargetsCSV, exportResultsCSV } from '../controllers/reportController.js';
 
 const router = express.Router();
-router.get('/dashboard/summary', getDashboardSummary);
 
 // 1. Specific routes MUST come before /:id routes
 router.get('/reports/targets.csv', exportTargetsCSV);
@@ -25,12 +23,12 @@ router.post('/', validateTarget, createTarget);
 router.get('/', getTargets);
 
 // 3. Dynamic /:id routes
-router.post('/:id/check', runManualCheck); 
+router.post('/:id/check', runManualCheck);
 router.get('/:id', getTargetById);
-router.patch('/:id', validateTarget, updateTarget);
+router.patch('/:id', validateTargetUpdate, updateTarget);   // partial update
 router.delete('/:id', deleteTarget);
-router.patch('/:id/enabled', toggleTargetEnabled);
+router.patch('/:id/enabled', validateEnabledToggle, toggleTargetEnabled);
 router.get('/:id/history', getTargetHistory);
 router.get('/:id/uptime', getTargetUptime);
 
-export default router; 
+export default router;
