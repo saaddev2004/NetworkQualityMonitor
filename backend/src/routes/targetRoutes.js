@@ -1,4 +1,5 @@
 import express from 'express';
+import { getDashboardSummary } from '../controllers/dashboardController.js';
 import { 
     createTarget, 
     getTargets, 
@@ -13,6 +14,7 @@ import { getTargetHistory, getTargetUptime } from '../controllers/historyControl
 import { exportTargetsCSV, exportResultsCSV } from '../controllers/reportController.js';
 
 const router = express.Router();
+router.get('/dashboard/summary', getDashboardSummary);
 
 // 1. Specific routes MUST come before /:id routes
 router.get('/reports/targets.csv', exportTargetsCSV);

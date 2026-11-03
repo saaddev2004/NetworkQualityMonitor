@@ -1,10 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import pool from './config/db.js';
 import targetRoutes from './routes/targetRoutes.js';
+import { getDashboardSummary } from './controllers/dashboardController.js';
+import { getEvents } from './controllers/eventController.js';
 import { initScheduler } from './scheduler/scheduler.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config();
 
 const app = express();
@@ -32,6 +38,14 @@ app.get('/api/v1/health', async (req, res) => {
         });
     }
 });
+
+// Dashboard summary endpoint (matches frontend api.get('/dashboard/summary'))
+app.get('/api/v1/dashboard/summary', getDashboardSummary);
+
+// Events endpoint
+app.get('/api/v1/events', getEvents);
+
+// Targets routes (also includes /api/v1/targets/dashboard/summary)
 app.use('/api/v1/targets', targetRoutes);
 
 // Global Error Handler
