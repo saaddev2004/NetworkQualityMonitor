@@ -64,7 +64,13 @@ test('unknown API route -> JSON 404', async () => {
 });
 
 test('health returns 503 (not a crash) when the DB is unreachable', async () => {
-    const res = await send('GET', '/health');
-    assert.equal(res.status, 503);
-    assert.equal((await res.json()).error.code, 'DB_UNAVAILABLE');
+    const originalQuery = pool.query.bind(pool);
+    pool.query = () => Promise.reject(new Error('simulated DB failure'));
+    try {
+        const res = await send('GET', '/health');
+        assert.equal(res.status, 503);
+        assert.equal((await res.json()).error.code, 'DB_UNAVAILABLE');
+    } finally {
+        pool.query = originalQuery;
+    }
 });
