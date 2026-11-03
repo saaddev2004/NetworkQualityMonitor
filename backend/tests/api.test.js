@@ -1,0 +1,70 @@
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import app from '../src/app.js';
+import pool from '../src/config/db.js';
+
+// These tests only hit paths that are rejected BEFORE the database is used
+// (validation, 404, bad JSON), so they run without MySQL.
+let server;
+let base;
+
+before(async () => {
+    await new Promise((resolve) => { server = app.listen(0, resolve); });
+    base = `http://127.0.0.1:${server.address().port}/api/v1`;
+});
+
+after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    await pool.end().catch(() => {});
+});
+
+const send = (method, path, body, rawBody) =>
+    fetch(base + path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: rawBody ?? (body === undefined ? undefined : JSON.stringify(body))
+    });
+
+test('POST /targets with bad input -> 422 VALIDATION_ERROR', async () => {
+    const res = await send('POST', '/targets', { name: '', targetType: 'website', address: 'ftp://x', checkMethod: 'http' });
+    assert.equal(res.status, 422);
+    const json = await res.json();
+    assert.equal(json.error.code, 'VALIDATION_ERROR');
+    assert.ok(json.error.details.length >= 2);
+});
+
+test('PATCH /targets/:id with empty body -> 422', async () => {
+    assert.equal((await send('PATCH', '/targets/1', {})).status, 422);
+});
+
+test('PATCH /targets/:id/enabled needs a real boolean', async () => {
+    assert.equal((await send('PATCH', '/targets/1/enabled', {})).status, 422);
+    assert.equal((await send('PATCH', '/targets/1/enabled', { isEnabled: 'false' })).status, 422);
+});
+
+test('history/uptime/events/export reject bad query params -> 422', async () => {
+    assert.equal((await send('GET', '/targets/1/history?limit=9999')).status, 422);
+    assert.equal((await send('GET', '/targets/1/history?page=0')).status, 422);
+    assert.equal((await send('GET', '/targets/1/history?from=not-a-date')).status, 422);
+    assert.equal((await send('GET', '/targets/1/uptime?to=nope')).status, 422);
+    assert.equal((await send('GET', '/events?isResolved=maybe')).status, 422);
+    assert.equal((await send('GET', '/targets/reports/results.csv?targetId=abc')).status, 422);
+});
+
+test('malformed JSON -> 400 INVALID_JSON', async () => {
+    const res = await send('POST', '/targets', undefined, '{ not json');
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, 'INVALID_JSON');
+});
+
+test('unknown API route -> JSON 404', async () => {
+    const res = await send('GET', '/does-not-exist');
+    assert.equal(res.status, 404);
+    assert.equal((await res.json()).error.code, 'NOT_FOUND');
+});
+
+test('health returns 503 (not a crash) when the DB is unreachable', async () => {
+    const res = await send('GET', '/health');
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).error.code, 'DB_UNAVAILABLE');
+});

@@ -1,21 +1,26 @@
 import pool from '../config/db.js';
-import { executeCheck } from '../services/monitorService.js'; 
-import { scheduleTarget } from '../scheduler/scheduler.js'; // <-- Scheduler yahan import kiya gaya hai
+import { checkAndRecord } from '../services/checkRunner.js';
+import { resolveOpenEvents } from '../services/eventService.js';
+import { scheduleTarget, unscheduleTarget } from '../scheduler/scheduler.js';
+import { validateMergedTarget, sendValidationError } from '../middleware/validate.js';
+
+const notFound = (res) =>
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Target not found' } });
 
 // Create a new target (POST /targets)
 export const createTarget = async (req, res, next) => {
     try {
         const { name, targetType, address, checkMethod, checkIntervalSeconds, warningThresholdMs, criticalThresholdMs, timeoutSeconds } = req.body;
-        
+
         const query = `
-            INSERT INTO monitored_targets 
-            (name, target_type, address, check_method, check_interval_seconds, warning_threshold_ms, critical_threshold_ms, timeout_seconds, created_at, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())
+            INSERT INTO monitored_targets
+            (name, target_type, address, check_method, check_interval_seconds, warning_threshold_ms, critical_threshold_ms, timeout_seconds, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
         `;
-        
+
         const [result] = await pool.query(query, [name, targetType, address, checkMethod, checkIntervalSeconds, warningThresholdMs, criticalThresholdMs, timeoutSeconds]);
 
-        // Blueprint requirement: Naya target bante hi scheduler mein register karein
+        // New target starts being monitored immediately
         const [newTarget] = await pool.query('SELECT * FROM monitored_targets WHERE id = ?', [result.insertId]);
         scheduleTarget(newTarget[0]);
 
@@ -45,10 +50,8 @@ export const getTargetById = async (req, res, next) => {
     try {
         const { id } = req.params;
         const [rows] = await pool.query('SELECT * FROM monitored_targets WHERE id = ?', [id]);
-        
-        if (rows.length === 0) {
-            return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Target not found' } });
-        }
+
+        if (rows.length === 0) return notFound(res);
         res.status(200).json(rows[0]);
     } catch (error) {
         next(error);
@@ -56,29 +59,33 @@ export const getTargetById = async (req, res, next) => {
 };
 
 // Update a target (PATCH /targets/:id)
+// Only the fields sent are changed; everything else keeps its current value.
 export const updateTarget = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { name, targetType, address, checkMethod, checkIntervalSeconds, warningThresholdMs, criticalThresholdMs, timeoutSeconds } = req.body;
 
-        const query = `
-            UPDATE monitored_targets 
-            SET name=?, target_type=?, address=?, check_method=?, check_interval_seconds=?, 
-                warning_threshold_ms=?, critical_threshold_ms=?, timeout_seconds=?, updated_at=UTC_TIMESTAMP()
-            WHERE id=?
-        `;
-        
-        const [result] = await pool.query(query, [name, targetType, address, checkMethod, checkIntervalSeconds, warningThresholdMs, criticalThresholdMs, timeoutSeconds, id]);
+        const [existing] = await pool.query('SELECT * FROM monitored_targets WHERE id = ?', [id]);
+        if (existing.length === 0) return notFound(res);
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Target not found' } });
-        }
+        // Merge the patch into the current row and validate the final result
+        const merged = validateMergedTarget(existing[0], req.body);
+        if (!merged.success) return sendValidationError(res, merged.error);
 
-        // Blueprint requirement: Edit hone par scheduled job cancel kar ke naye interval par chalayein[cite: 3]
+        const { name, targetType, address, checkMethod, checkIntervalSeconds, warningThresholdMs, criticalThresholdMs, timeoutSeconds } = merged.data;
+
+        await pool.query(
+            `UPDATE monitored_targets
+             SET name=?, target_type=?, address=?, check_method=?, check_interval_seconds=?,
+                 warning_threshold_ms=?, critical_threshold_ms=?, timeout_seconds=?, updated_at=UTC_TIMESTAMP(3)
+             WHERE id=?`,
+            [name, targetType, address, checkMethod, checkIntervalSeconds, warningThresholdMs, criticalThresholdMs, timeoutSeconds, id]
+        );
+
+        // Cancel the old job and start a new one with the new settings
         const [updatedTarget] = await pool.query('SELECT * FROM monitored_targets WHERE id = ?', [id]);
         scheduleTarget(updatedTarget[0]);
 
-        res.status(200).json({ message: 'Target updated successfully' }); 
+        res.status(200).json({ message: 'Target updated successfully' });
     } catch (error) {
         next(error);
     }
@@ -90,37 +97,36 @@ export const deleteTarget = async (req, res, next) => {
         const { id } = req.params;
         const [result] = await pool.query('DELETE FROM monitored_targets WHERE id = ?', [id]);
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Target not found' } });
-        }
+        if (result.affectedRows === 0) return notFound(res);
 
-        // Blueprint requirement: Target delete hone par scheduled job bhi foran ruk jani chahiye[cite: 3]
-        scheduleTarget({ id: id, is_enabled: false });
+        // Stop the scheduled job right away (id is converted to a number inside)
+        unscheduleTarget(id);
 
-        res.status(204).send(); 
+        res.status(204).send();
     } catch (error) {
         next(error);
     }
 };
 
-// Toggle target enabled/disabled status (PATCH /targets/:id/enabled)
+// Enable / disable a target (PATCH /targets/:id/enabled)
 export const toggleTargetEnabled = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { isEnabled } = req.body; 
+        const { isEnabled } = req.body; // validated: always a real boolean
 
         const newStatus = isEnabled ? 'unknown' : 'disabled';
 
         const [result] = await pool.query(
-            'UPDATE monitored_targets SET is_enabled = ?, current_status = ?, updated_at = UTC_TIMESTAMP() WHERE id = ?',
+            'UPDATE monitored_targets SET is_enabled = ?, current_status = ?, updated_at = UTC_TIMESTAMP(3) WHERE id = ?',
             [isEnabled, newStatus, id]
         );
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Target not found' } });
-        }
+        if (result.affectedRows === 0) return notFound(res);
 
-        // Blueprint requirement: Enable/Disable hone par cron job start ya stop karein[cite: 3]
+        // A disabled target is no longer monitored, so its open events must not stay "active"
+        if (!isEnabled) await resolveOpenEvents(id, null);
+
+        // Start or stop the scheduled job
         const [toggledTarget] = await pool.query('SELECT * FROM monitored_targets WHERE id = ?', [id]);
         scheduleTarget(toggledTarget[0]);
 
@@ -131,25 +137,35 @@ export const toggleTargetEnabled = async (req, res, next) => {
 };
 
 // Run a manual check (POST /targets/:id/check)
+// Works exactly like a scheduled check: result is saved, status updated, events raised.
 export const runManualCheck = async (req, res, next) => {
     try {
         const { id } = req.params;
-        
-        const [rows] = await pool.query('SELECT * FROM monitored_targets WHERE id = ?', [id]);
-        if (rows.length === 0) {
-            return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Target not found' } });
-        }
-        const target = rows[0];
 
-        const checkResult = await executeCheck(target);
+        const outcome = await checkAndRecord(id);
+
+        if (outcome.outcome === 'missing') return notFound(res);
+
+        if (outcome.outcome === 'disabled') {
+            return res.status(409).json({
+                error: { code: 'TARGET_DISABLED', message: 'Target is disabled. Enable it before running a check.' }
+            });
+        }
+
+        if (outcome.outcome === 'busy') {
+            return res.status(409).json({
+                error: { code: 'CHECK_IN_PROGRESS', message: 'A check for this target is already running. Try again in a moment.' }
+            });
+        }
 
         res.status(200).json({
             message: 'Manual check executed successfully',
-            target: target.name,
-            method: target.check_method,
-            result: checkResult
+            target: outcome.target.name,
+            method: outcome.target.check_method,
+            status: outcome.status,
+            previousStatus: outcome.previousStatus,
+            result: outcome.result
         });
-
     } catch (error) {
         next(error);
     }

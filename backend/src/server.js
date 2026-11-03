@@ -1,65 +1,25 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import './config/env.js';
+import app from './app.js';
 import pool from './config/db.js';
-import targetRoutes from './routes/targetRoutes.js';
-import { getDashboardSummary } from './controllers/dashboardController.js';
-import { getEvents } from './controllers/eventController.js';
-import { initScheduler } from './scheduler/scheduler.js';
+import { initScheduler, stopAllJobs } from './scheduler/scheduler.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config();
-
-const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
-app.use(express.json());
-
-// Health Check API
-app.get('/api/v1/health', async (req, res) => {
-    try {
-        await pool.query('SELECT 1');
-        res.status(200).json({
-            status: 'ok',
-            message: 'Application and Database are healthy',
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Database connection error:', error);
-        res.status(503).json({
-            error: {
-                code: 'DB_UNAVAILABLE',
-                message: 'Database is unavailable'
-            }
-        });
-    }
-});
-
-// Dashboard summary endpoint (matches frontend api.get('/dashboard/summary'))
-app.get('/api/v1/dashboard/summary', getDashboardSummary);
-
-// Events endpoint
-app.get('/api/v1/events', getEvents);
-
-// Targets routes (also includes /api/v1/targets/dashboard/summary)
-app.use('/api/v1/targets', targetRoutes);
-
-// Global Error Handler
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        error: {
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'An unexpected internal error occurred'
-        }
-    });
-});
-
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     initScheduler();
 });
+
+// Graceful shutdown: stop timers, finish open requests, close the DB pool.
+const shutdown = (signal) => {
+    console.log(`\n${signal} received. Shutting down...`);
+    stopAllJobs();
+    server.close(async () => {
+        await pool.end().catch(() => {});
+        process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10000).unref(); // force exit if something hangs
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
