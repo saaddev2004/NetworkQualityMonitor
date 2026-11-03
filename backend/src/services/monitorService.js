@@ -43,7 +43,9 @@ export const checkIcmpTarget = async (address, timeoutSeconds) => {
         // Blueprint requirement: Wrap the selected ping package, avoid unsafe shell command construction.
         const response = await ping.promise.probe(address, {
             timeout: timeoutSeconds,
-            extra: ['-c', '3'] // Send 3 packets for a reliable average
+            // Send 3 packets for a reliable average. min_reply is translated by the
+            // package to the right flag per OS (-c on Linux/Mac, -n on Windows).
+            min_reply: 3
         });
 
         if (response.alive) {
