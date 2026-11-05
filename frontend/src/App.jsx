@@ -6,28 +6,12 @@ import Targets from './pages/Targets';
 import TargetDetails from './pages/TargetDetails';
 import Events from './pages/Events';
 import { initialTargets, initialEvents } from './data/mockData';
-import { Radio, Menu, Sun, Moon } from 'lucide-react';
+import { Radio, Sun, Moon } from 'lucide-react';
 import './index.css';
 
 export default function App() {
   const [targets, setTargets] = useState(initialTargets);
   const [events, setEvents] = useState(initialEvents);
-
-  // Sidebar Open/Closed State (default open on desktop, closed on mobile)
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768;
-    }
-    return true;
-  });
-
-  const toggleSidebar = () => {
-    setSidebarOpen(prev => !prev);
-  };
-
-  const closeSidebar = () => {
-    setSidebarOpen(false);
-  };
 
   // Theme State management (Dark mode by default, toggleable to light)
   const [theme, setTheme] = useState(() => {
@@ -126,11 +110,8 @@ export default function App() {
   return (
     <Router>
       <div className="app-container">
-        {/* Navigation Sidebar */}
+        {/* Navigation Sidebar (Always Sticky / Fixed) */}
         <Sidebar 
-          isOpen={sidebarOpen}
-          onClose={closeSidebar}
-          onToggle={toggleSidebar}
           targetsCount={targets.length} 
           activeAlertsCount={activeAlertsCount} 
           theme={theme}
@@ -142,16 +123,6 @@ export default function App() {
           {/* Top Telemetry Global Header */}
           <header className="top-telemetry-bar">
             <div className="flex items-center gap-3">
-              {/* Hamburger Button: Toggles sidebar on BOTH desktop and mobile */}
-              <button
-                onClick={toggleSidebar}
-                className="btn-telemetry btn-icon btn-secondary"
-                title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-                aria-label="Toggle sidebar menu"
-              >
-                <Menu className="w-4 h-4" />
-              </button>
-
               <span className="text-xs font-mono text-[var(--text-muted)] flex items-center gap-1.5">
                 <Radio className="w-3.5 h-3.5 text-[var(--brand-primary)]" />
                 <span className="font-semibold text-[var(--text-primary)]">NETWORK MONITOR</span>
