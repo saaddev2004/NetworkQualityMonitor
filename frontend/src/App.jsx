@@ -6,7 +6,8 @@ import Targets from './pages/Targets';
 import TargetDetails from './pages/TargetDetails';
 import Events from './pages/Events';
 import { initialTargets, initialEvents } from './data/mockData';
-import { Radio, Sun, Moon } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
+import { NetPulseIcon } from './components/NetPulseLogo';
 import './index.css';
 
 export default function App() {
@@ -123,13 +124,15 @@ export default function App() {
           {/* Top Telemetry Global Header */}
           <header className="top-telemetry-bar">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-mono text-[var(--text-muted)] flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-[var(--brand-primary)]" />
-                <span className="font-semibold text-[var(--text-primary)]">NETWORK MONITOR</span>
+              <span className="text-xs font-mono text-[var(--text-muted)] flex items-center gap-2">
+                <NetPulseIcon size={20} />
+                <span className="font-bold tracking-tight text-[var(--text-primary)]">
+                  NET<span className="text-[#48D9C2]">PULSE</span>
+                </span>
               </span>
               <span className="text-[var(--border-subtle)] hidden sm:inline">/</span>
               <span className="text-xs font-medium text-[var(--text-secondary)] hidden sm:inline">
-                Enterprise Observability
+                Network Monitoring & Performance Intelligence
               </span>
             </div>
 

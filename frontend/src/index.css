@@ -33,16 +33,21 @@
   --text-muted: #6E7681;
   --text-inverse: #0D1117;
 
+  /* NetPulse Brand Identity Palette */
+  --brand-navy: #101B2D;
+  --brand-teal: #48D9C2;
+  --brand-white: #FFFFFF;
+
   /* Primary Accent & Links */
-  --brand-primary: #58A6FF;
-  --brand-hover: #79C0FF;
-  --brand-subtle: rgba(88, 166, 255, 0.12);
-  --text-link: #58A6FF;
+  --brand-primary: #48D9C2;
+  --brand-hover: #38C7B0;
+  --brand-subtle: rgba(72, 217, 194, 0.12);
+  --text-link: #48D9C2;
 
   /* Button Tokens */
-  --btn-primary-bg: #58A6FF;
-  --btn-primary-text: #0D1117;
-  --btn-primary-hover: #79C0FF;
+  --btn-primary-bg: #48D9C2;
+  --btn-primary-text: #101B2D;
+  --btn-primary-hover: #38C7B0;
 
   /* Status Colors */
   --status-online: #3FB950;
@@ -111,16 +116,21 @@
   --text-muted: #6E7781;
   --text-inverse: #FFFFFF;
 
+  /* NetPulse Brand Identity Palette */
+  --brand-navy: #101B2D;
+  --brand-teal: #0D9488;
+  --brand-white: #FFFFFF;
+
   /* Primary Accent & Links */
-  --brand-primary: #0969DA;
-  --brand-hover: #0550AE;
-  --brand-subtle: rgba(9, 105, 218, 0.08);
-  --text-link: #0969DA;
+  --brand-primary: #0D9488;
+  --brand-hover: #0F766E;
+  --brand-subtle: rgba(13, 148, 136, 0.10);
+  --text-link: #0D9488;
 
   /* Button Tokens */
-  --btn-primary-bg: #0969DA;
+  --btn-primary-bg: #0D9488;
   --btn-primary-text: #FFFFFF;
-  --btn-primary-hover: #0550AE;
+  --btn-primary-hover: #0F766E;
 
   /* Status Colors */
   --status-online: #1A7F37;

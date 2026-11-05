@@ -1,5 +1,5 @@
 // ============================================================
-// Mock Data for Network Quality Monitoring System
+// Mock Data for NetPulse — Network Monitoring & Performance Intelligence
 // Frontend Prototype – fully internally consistent sample data
 // ============================================================
 
