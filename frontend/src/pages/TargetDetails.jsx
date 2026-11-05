@@ -240,7 +240,7 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
                 onClick={() => setChartRange(r)}
                 className={`text-xs px-2.5 py-0.5 rounded transition ${
                   chartRange === r
-                    ? 'bg-[var(--brand-primary)] text-white font-semibold'
+                    ? 'bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] font-semibold'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
                 }`}
               >

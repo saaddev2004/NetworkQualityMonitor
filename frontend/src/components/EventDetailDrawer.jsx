@@ -36,10 +36,10 @@ export default function EventDetailDrawer({ isOpen, onClose, event }) {
       <div className={`telemetry-drawer ${isOpen ? 'open' : ''}`}>
         <div className="drawer-header">
           <div className="flex items-center gap-2.5">
-            <div className={`p-1.5 rounded ${
-              isCritical ? 'bg-rose-500/10 text-[var(--status-critical)]' :
-              isWarning ? 'bg-amber-500/10 text-[var(--status-warning)]' :
-              'bg-emerald-500/10 text-[var(--status-online)]'
+            <div className={`p-1.5 rounded border ${
+              isCritical ? 'bg-[var(--status-critical-bg)] text-[var(--status-critical)] border-[var(--status-critical-border)]' :
+              isWarning ? 'bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-[var(--status-warning-border)]' :
+              'bg-[var(--status-online-bg)] text-[var(--status-online)] border-[var(--status-online-border)]'
             }`}>
               {isCritical ? <AlertCircle className="w-4 h-4" /> :
                isWarning ? <AlertTriangle className="w-4 h-4" /> :

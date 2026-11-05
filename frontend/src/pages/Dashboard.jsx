@@ -199,7 +199,7 @@ export default function Dashboard({ targets = [], events = [], onAddTarget, onUp
                   onClick={() => setChartTimeRange(range)}
                   className={`text-xs px-2 py-0.5 rounded transition ${
                     chartTimeRange === range
-                      ? 'bg-[var(--brand-primary)] text-white font-semibold'
+                      ? 'bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] font-semibold'
                       : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
                   }`}
                 >

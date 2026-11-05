@@ -62,7 +62,7 @@ export default function Sidebar({
         {/* Brand Header */}
         <div className="brand-badge">
           <div className="brand-icon-wrap">
-            <Radio className="w-4 h-4 text-white" />
+            <Radio className="w-4 h-4 text-[var(--btn-primary-text)]" />
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="font-bold text-sm tracking-tight text-[var(--text-primary)] truncate">
@@ -140,12 +140,12 @@ export default function Sidebar({
           >
             {theme === 'dark' ? (
               <>
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <Sun className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                 <span>Light Mode</span>
               </>
             ) : (
               <>
-                <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                <Moon className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                 <span>Dark Mode</span>
               </>
             )}

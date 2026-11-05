@@ -89,7 +89,7 @@ export default function ResponseChart({ points = [], target, height = 200 }) {
           x2={chartWidth - paddingRight}
           y1={height - paddingBottom}
           y2={height - paddingBottom}
-          stroke="var(--border-subtle)"
+          stroke="var(--chart-grid)"
           strokeWidth="1"
         />
         <line
@@ -97,7 +97,7 @@ export default function ResponseChart({ points = [], target, height = 200 }) {
           x2={chartWidth - paddingRight}
           y1={paddingTop}
           y2={paddingTop}
-          stroke="var(--border-subtle)"
+          stroke="var(--chart-grid)"
           strokeWidth="1"
           strokeDasharray="4 4"
         />
@@ -204,7 +204,7 @@ export default function ResponseChart({ points = [], target, height = 200 }) {
               x={x}
               y={height - 8}
               textAnchor="middle"
-              fill="var(--text-muted)"
+              fill="var(--chart-axis)"
               fontSize="9"
               fontFamily="JetBrains Mono, monospace"
             >
@@ -217,14 +217,14 @@ export default function ResponseChart({ points = [], target, height = 200 }) {
       {/* Hover Tooltip Overlay */}
       {hoveredPoint && (
         <div
-          className="absolute z-10 px-2.5 py-1 rounded bg-[var(--bg-elevated)] border border-[var(--border-card-hover)] shadow-md pointer-events-none text-xs font-mono"
+          className="absolute z-10 px-2.5 py-1 rounded bg-[var(--chart-tooltip-bg)] border border-[var(--chart-tooltip-border)] shadow-md pointer-events-none text-xs font-mono"
           style={{
             left: `${Math.min(Math.max(10, (hoveredPoint.x / chartWidth) * 100), 85)}%`,
             top: `${Math.max(0, hoveredPoint.y - 40)}px`
           }}
         >
-          <div className="text-[var(--text-primary)] font-bold">{hoveredPoint.val} ms</div>
-          <div className="text-[10px] text-[var(--text-muted)]">
+          <div className="text-[var(--chart-tooltip-text)] font-bold">{hoveredPoint.val} ms</div>
+          <div className="text-[10px] text-[var(--chart-axis)]">
             {typeof hoveredPoint.point === 'object' ? hoveredPoint.point.time : 'Sample'}
           </div>
         </div>
