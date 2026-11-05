@@ -5,9 +5,9 @@ import {
   Server, 
   AlertTriangle, 
   Sun, 
-  Moon, 
-  Radio 
+  Moon 
 } from 'lucide-react';
+import NetPulseLogo from './NetPulseLogo';
 
 export default function Sidebar({ 
   targetsCount = 8, 
@@ -41,17 +41,7 @@ export default function Sidebar({
     <aside className="app-sidebar">
       {/* Brand Header */}
       <div className="brand-badge">
-        <div className="brand-icon-wrap">
-          <Radio className="w-4 h-4 text-[var(--btn-primary-text)]" />
-        </div>
-        <div className="flex flex-col flex-1 min-w-0">
-          <span className="font-bold text-sm tracking-tight text-[var(--text-primary)] truncate">
-            Network Monitor
-          </span>
-          <span className="text-[11px] text-[var(--text-muted)] truncate">
-            Network Quality Monitoring
-          </span>
-        </div>
+        <NetPulseLogo variant="horizontal" size="md" showTagline={true} />
       </div>
 
       {/* Navigation Section */}
@@ -121,7 +111,7 @@ export default function Sidebar({
           )}
         </button>
         <div className="text-[10px] text-[var(--text-muted)] text-center font-mono">
-          NetQuality Monitor v1.0
+          NetPulse v1.0 • Enterprise Telemetry
         </div>
       </div>
     </aside>

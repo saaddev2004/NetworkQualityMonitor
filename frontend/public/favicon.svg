@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="npGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#101B2D"/>
+      <stop offset="100%" stop-color="#0B1320"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Badge -->
+  <rect width="32" height="32" rx="8" fill="url(#npGradient)" stroke="#48D9C2" stroke-width="1.2" stroke-opacity="0.35"/>
+  
+  <!-- Subtle Apex Node Halo -->
+  <circle cx="15.5" cy="8" r="4.5" fill="none" stroke="#48D9C2" stroke-width="0.75" stroke-opacity="0.35"/>
+  
+  <!-- Network Telemetry Pulse Waveform -->
+  <path d="M 5.5 16 H 9.5 L 12 20 L 15.5 8 L 19 23 L 21.5 13 L 23.5 16 H 26.5" 
+        fill="none" 
+        stroke="#48D9C2" 
+        stroke-width="2.2" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+        
+  <!-- Terminal & Apex Network Nodes -->
+  <circle cx="5.5" cy="16" r="2" fill="#FFFFFF" stroke="#48D9C2" stroke-width="1.2"/>
+  <circle cx="15.5" cy="8" r="2.2" fill="#48D9C2" stroke="#FFFFFF" stroke-width="1.2"/>
+  <circle cx="26.5" cy="16" r="2" fill="#FFFFFF" stroke="#48D9C2" stroke-width="1.2"/>
+</svg>
