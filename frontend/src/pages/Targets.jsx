@@ -1,438 +1,411 @@
-import { useEffect, useState, useCallback } from 'react';
-import api from '../services/api';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
-  Plus, 
-  RefreshCw, 
-  Trash2, 
-  Play, 
-  Power, 
-  Download, 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
-  Clock, 
-  Globe, 
   Server, 
-  Cpu,
-  X
+  Search, 
+  Filter, 
+  Plus, 
+  Download, 
+  RotateCw, 
+  Edit3, 
+  Trash2, 
+  CheckCircle2, 
+  AlertCircle,
+  ExternalLink,
+  ChevronRight,
+  Check,
+  Power,
+  Play,
+  Globe,
+  Cpu
 } from 'lucide-react';
+import StatusBadge from '../components/StatusBadge';
+import Sparkline from '../components/Sparkline';
+import TargetDrawer from '../components/TargetDrawer';
 
-export default function Targets() {
-  const [targets, setTargets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState({});
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [notification, setNotification] = useState(null);
+export default function Targets({ 
+  targets = [], 
+  onAddTarget, 
+  onUpdateTarget, 
+  onDeleteTarget,
+  onToggleTarget,
+  onManualCheck
+}) {
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [methodFilter, setMethodFilter] = useState('all');
+  const [selectedTarget, setSelectedTarget] = useState(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [checkingId, setCheckingId] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    targetType: 'website',
-    address: 'https://',
-    checkMethod: 'http',
-    checkIntervalSeconds: 60,
-    warningThresholdMs: 500,
-    criticalThresholdMs: 1000,
-    timeoutSeconds: 5
-  });
-
-  const fetchTargets = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/targets');
-      setTargets(res.data);
-    } catch (err) {
-      console.error('Failed to fetch targets:', err);
-      showNotification('Failed to load targets from backend', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTargets();
-  }, [fetchTargets]);
-
-  const showNotification = (msg, type = 'info') => {
-    setNotification({ msg, type });
-    setTimeout(() => setNotification(null), 4000);
-  };
-
-  const handleManualCheck = async (id, name) => {
-    try {
-      setActionLoading(prev => ({ ...prev, [id]: 'checking' }));
-      const res = await api.post(`/targets/${id}/check`);
-      const r = res.data.result;
-      const statusText = r.status || (r.isAvailable ? 'online' : 'offline');
-      const latencyText = r.responseTimeMs !== null ? `${r.responseTimeMs} ms` : 'N/A';
-      showNotification(`Checked ${name}: ${statusText.toUpperCase()} (${latencyText})`, r.isAvailable ? 'success' : 'error');
-      fetchTargets();
-    } catch (err) {
-      console.error('Manual check failed:', err);
-      showNotification(`Manual check failed: ${err.response?.data?.error?.message || err.message}`, 'error');
-    } finally {
-      setActionLoading(prev => ({ ...prev, [id]: null }));
-    }
-  };
-
-  const handleToggleEnabled = async (target) => {
-    const newEnabled = !target.is_enabled;
-    try {
-      setActionLoading(prev => ({ ...prev, [target.id]: 'toggling' }));
-      await api.patch(`/targets/${target.id}/enabled`, { isEnabled: newEnabled });
-      showNotification(`Target ${target.name} ${newEnabled ? 'enabled' : 'disabled'}`, 'info');
-      fetchTargets();
-    } catch (err) {
-      console.error('Toggle failed:', err);
-      showNotification('Failed to toggle target status', 'error');
-    } finally {
-      setActionLoading(prev => ({ ...prev, [target.id]: null }));
-    }
-  };
-
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete target "${name}"?`)) return;
-    try {
-      setActionLoading(prev => ({ ...prev, [id]: 'deleting' }));
-      await api.delete(`/targets/${id}`);
-      showNotification(`Target "${name}" removed`, 'info');
-      setTargets(prev => prev.filter(t => t.id !== id));
-    } catch (err) {
-      console.error('Delete failed:', err);
-      showNotification('Failed to delete target', 'error');
-    } finally {
-      setActionLoading(prev => ({ ...prev, [id]: null }));
-    }
-  };
-
-  const handleCreateTarget = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/targets', {
-        ...formData,
-        checkIntervalSeconds: Number(formData.checkIntervalSeconds),
-        warningThresholdMs: Number(formData.warningThresholdMs),
-        criticalThresholdMs: Number(formData.criticalThresholdMs),
-        timeoutSeconds: Number(formData.timeoutSeconds)
-      });
-      showNotification(`Target "${formData.name}" added successfully!`, 'success');
-      setShowAddModal(false);
-      setFormData({
-        name: '',
-        targetType: 'website',
-        address: 'https://',
-        checkMethod: 'http',
-        checkIntervalSeconds: 60,
-        warningThresholdMs: 500,
-        criticalThresholdMs: 1000,
-        timeoutSeconds: 5
-      });
-      fetchTargets();
-    } catch (err) {
-      console.error('Create target failed:', err);
-      const detail = err.response?.data?.error?.details?.[0]?.message || err.response?.data?.error?.message || err.message;
-      showNotification(`Failed to create target: ${detail}`, 'error');
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const map = {
-      online: { cls: 'badge-online', icon: CheckCircle2 },
-      warning: { cls: 'badge-warning', icon: AlertTriangle },
-      critical: { cls: 'badge-critical', icon: AlertTriangle },
-      offline: { cls: 'badge-offline', icon: XCircle },
-      disabled: { cls: 'badge-disabled', icon: Clock },
-      unknown: { cls: 'badge-unknown', icon: Clock },
+  // Status counts for filter chips
+  const counts = useMemo(() => {
+    return {
+      all: targets.length,
+      online: targets.filter(t => t.current_status === 'online').length,
+      warning: targets.filter(t => t.current_status === 'warning').length,
+      critical: targets.filter(t => t.current_status === 'critical').length,
+      offline: targets.filter(t => t.current_status === 'offline').length,
+      disabled: targets.filter(t => !t.is_enabled || t.current_status === 'disabled').length
     };
-    const item = map[status] || map.unknown;
-    const Icon = item.icon;
-    return (
-      <span className={`badge ${item.cls}`}>
-        <Icon size={12} />
-        {status}
-      </span>
-    );
+  }, [targets]);
+
+  // Filtered targets
+  const filteredTargets = useMemo(() => {
+    return targets.filter(t => {
+      const matchesSearch = 
+        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.address.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesStatus = 
+        statusFilter === 'all' || 
+        (statusFilter === 'disabled' ? (!t.is_enabled || t.current_status === 'disabled') : t.current_status === statusFilter);
+
+      const matchesType =
+        typeFilter === 'all' ||
+        t.target_type === typeFilter;
+
+      const matchesMethod =
+        methodFilter === 'all' ||
+        t.check_method === methodFilter;
+
+      return matchesSearch && matchesStatus && matchesType && matchesMethod;
+    });
+  }, [targets, searchQuery, statusFilter, typeFilter, methodFilter]);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleManualCheck = (e, target) => {
+    e.stopPropagation();
+    setCheckingId(target.id);
+    setTimeout(() => {
+      onManualCheck(target.id);
+      setCheckingId(null);
+      showToast(`Manual probe cycle completed for ${target.name}`);
+    }, 600);
+  };
+
+  const handleToggle = (e, target) => {
+    e.stopPropagation();
+    onToggleTarget(target.id);
+    showToast(`Target ${target.name} ${target.is_enabled ? 'paused' : 'activated'}`);
+  };
+
+  const handleEdit = (e, target) => {
+    e.stopPropagation();
+    setSelectedTarget(target);
+    setIsDrawerOpen(true);
+  };
+
+  const handleDelete = (e, target) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to decommission probe target: "${target.name}"?`)) {
+      onDeleteTarget(target.id);
+      showToast(`Decommissioned target #${target.id}`);
+    }
+  };
+
+  // CSV Export - browser client-side download
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Name', 'Address', 'Type', 'Method', 'Status', 'Latency(ms)', 'Uptime', 'Interval(s)'];
+    const rows = targets.map(t => [
+      t.id,
+      `"${t.name.replace(/"/g, '""')}"`,
+      `"${t.address.replace(/"/g, '""')}"`,
+      t.target_type,
+      t.check_method,
+      t.current_status,
+      t.latency !== null ? t.latency : 'N/A',
+      t.uptime_percentage,
+      t.check_interval_seconds
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `monitored_targets_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Exported targets CSV report successfully');
   };
 
   return (
-    <div className="wrap">
-      {notification && (
-        <div style={{
-          position: 'fixed',
-          top: 24,
-          right: 24,
-          zIndex: 100,
-          background: notification.type === 'error' ? '#fee2e2' : notification.type === 'success' ? '#dcfce7' : '#e0f2fe',
-          color: notification.type === 'error' ? '#b91c1c' : notification.type === 'success' ? '#15803d' : '#0369a1',
-          border: `1px solid ${notification.type === 'error' ? '#f87171' : notification.type === 'success' ? '#86efac' : '#7dd3fc'}`,
-          padding: '12px 20px',
-          borderRadius: 8,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          fontWeight: 500,
-          fontSize: '0.875rem'
-        }}>
-          {notification.msg}
+    <div className="content-body">
+      {/* Toast Feedback */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 p-3 px-4 rounded-md bg-[var(--bg-card)] border border-[var(--border-card-hover)] shadow-md flex items-center gap-2 text-xs font-medium text-[var(--text-primary)]">
+          <CheckCircle2 className="w-4 h-4 text-[var(--status-online)]" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      <div className="row">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
         <div>
-          <span className="sm mu">Manage monitored websites, hosts, and HTTP microservices.</span>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
+              Monitored Targets
+            </h1>
+            <span className="font-mono text-xs px-2 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+              {filteredTargets.length} / {targets.length} Probes
+            </span>
+          </div>
+          <p className="text-xs text-[var(--text-muted)] mt-1">
+            Complete inventory of monitored websites, HTTP microservices, and network hosts.
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <a 
-            href="http://localhost:5000/api/v1/targets/reports/targets.csv"
-            download="targets.csv"
-            className="btn btn-secondary btn-sm"
-            style={{ textDecoration: 'none' }}
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportCSV}
+            className="btn-telemetry btn-secondary"
+            title="Download CSV report"
           >
-            <Download size={14} /> Export CSV
-          </a>
-          <button 
-            onClick={fetchTargets} 
-            className="btn btn-secondary btn-sm"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+            <Download className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
           </button>
-          <button 
-            onClick={() => setShowAddModal(true)} 
-            className="btn btn-primary btn-sm"
+
+          <button
+            onClick={() => {
+              setSelectedTarget(null);
+              setIsDrawerOpen(true);
+            }}
+            className="btn-telemetry btn-primary"
           >
-            <Plus size={14} /> Add Target
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Target</span>
           </button>
         </div>
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ padding: '32px', textAlign: 'center' }} className="mu sm">
-            <RefreshCw className="animate-spin" size={20} style={{ display: 'inline', marginRight: 8 }} />
-            Loading targets...
-          </div>
-        ) : targets.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center' }}>
-            <p className="mu" style={{ marginBottom: 16 }}>No targets currently monitored.</p>
-            <button onClick={() => setShowAddModal(true)} className="btn btn-primary btn-sm">
-              <Plus size={14} /> Add Your First Target
+      {/* Filter and Search Bar */}
+      <div className="telemetry-card p-3 space-y-3">
+        {/* Status Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {[
+            { id: 'all', label: 'All Targets', count: counts.all },
+            { id: 'online', label: 'Online', count: counts.online, color: 'var(--status-online)' },
+            { id: 'warning', label: 'Warning', count: counts.warning, color: 'var(--status-warning)' },
+            { id: 'critical', label: 'Critical', count: counts.critical, color: 'var(--status-critical)' },
+            { id: 'offline', label: 'Offline', count: counts.offline, color: 'var(--status-offline)' },
+            { id: 'disabled', label: 'Disabled', count: counts.disabled, color: 'var(--status-disabled)' },
+          ].map(chip => (
+            <button
+              key={chip.id}
+              onClick={() => setStatusFilter(chip.id)}
+              className={`text-xs py-1 px-2.5 rounded-md transition flex items-center gap-1.5 border ${
+                statusFilter === chip.id
+                  ? 'bg-[var(--brand-subtle)] text-[var(--text-primary)] border-[var(--brand-primary)] font-semibold'
+                  : 'text-[var(--text-secondary)] border-transparent hover:bg-[var(--bg-elevated)]'
+              }`}
+            >
+              {chip.color && (
+                <span className="status-dot" style={{ background: chip.color }} />
+              )}
+              <span>{chip.label}</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[var(--bg-canvas)] border border-[var(--border-subtle)]">
+                {chip.count}
+              </span>
             </button>
+          ))}
+        </div>
+
+        {/* Search & Category Selectors */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-[var(--border-subtle)]">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search targets by name, URL, or IP address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="form-input pl-8 text-xs"
+            />
           </div>
-        ) : (
-          <table className="data-table">
+
+          <div className="flex items-center gap-2">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="form-input text-xs w-auto"
+            >
+              <option value="all">All Types</option>
+              <option value="website">Website</option>
+              <option value="http_service">HTTP Service</option>
+              <option value="host">Host / Node</option>
+            </select>
+
+            <select
+              value={methodFilter}
+              onChange={(e) => setMethodFilter(e.target.value)}
+              className="form-input text-xs w-auto"
+            >
+              <option value="all">All Methods</option>
+              <option value="http">HTTP Probing</option>
+              <option value="icmp">ICMP Ping</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Targets Table */}
+      <div className="telemetry-card">
+        <div className="table-container">
+          <table className="telemetry-table">
             <thead>
               <tr>
                 <th>Target</th>
-                <th>Address</th>
-                <th>Type / Method</th>
-                <th>Interval</th>
+                <th>Method</th>
                 <th>Status</th>
+                <th>Latency</th>
+                <th>Uptime (24h)</th>
+                <th>Trend</th>
                 <th>Last Checked</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {targets.map(t => {
-                const isChecking = actionLoading[t.id] === 'checking';
-                const isToggling = actionLoading[t.id] === 'toggling';
-                const isDeleting = actionLoading[t.id] === 'deleting';
+              {filteredTargets.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="py-12 text-center text-xs text-[var(--text-muted)]">
+                    No monitored targets match your current search and filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredTargets.map((target) => {
+                  const isChecking = checkingId === target.id;
 
-                return (
-                  <tr key={t.id} style={{ opacity: t.is_enabled ? 1 : 0.65 }}>
-                    <td style={{ fontWeight: 600 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {t.target_type === 'website' && <Globe size={16} color="var(--pr)" />}
-                        {t.target_type === 'http_service' && <Server size={16} color="#7c3aed" />}
-                        {t.target_type === 'host' && <Cpu size={16} color="#059669" />}
-                        <span>{t.name}</span>
-                      </div>
-                    </td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--mu)' }}>
-                      {t.address}
-                    </td>
-                    <td>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 6px', background: '#e2e8f0', borderRadius: 4 }}>
-                        {t.check_method?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>{t.check_interval_seconds}s</td>
-                    <td>{getStatusBadge(t.current_status)}</td>
-                    <td className="sm mu">
-                      {t.last_checked_at ? new Date(t.last_checked_at).toLocaleTimeString() : 'Never'}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <button
-                          title="Run Check Now"
-                          disabled={isChecking || !t.is_enabled}
-                          onClick={() => handleManualCheck(t.id, t.name)}
-                          className="btn btn-secondary btn-sm"
-                        >
-                          <Play size={12} className={isChecking ? 'animate-spin' : ''} />
-                          {isChecking ? 'Checking...' : 'Check'}
-                        </button>
-                        <button
-                          title={t.is_enabled ? 'Disable Monitoring' : 'Enable Monitoring'}
-                          disabled={isToggling}
-                          onClick={() => handleToggleEnabled(t)}
-                          className="btn btn-secondary btn-sm"
-                        >
-                          <Power size={12} color={t.is_enabled ? 'var(--ok)' : 'var(--mu)'} />
-                        </button>
-                        <button
-                          title="Delete Target"
-                          disabled={isDeleting}
-                          onClick={() => handleDelete(t.id, t.name)}
-                          className="btn btn-danger btn-sm"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr
+                      key={target.id}
+                      className="clickable-row"
+                      onClick={() => navigate(`/targets/${target.id}`)}
+                    >
+                      <td>
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-1 rounded bg-[var(--bg-elevated)] text-[var(--text-muted)]">
+                            {target.target_type === 'website' && <Globe className="w-3.5 h-3.5" />}
+                            {target.target_type === 'http_service' && <Server className="w-3.5 h-3.5" />}
+                            {target.target_type === 'host' && <Cpu className="w-3.5 h-3.5" />}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-[var(--text-primary)] hover:text-[var(--brand-primary)] transition">
+                              {target.name}
+                            </div>
+                            <div className="font-mono text-[11px] text-[var(--text-muted)] truncate max-w-[240px]">
+                              {target.address}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                          {target.check_method}
+                        </span>
+                      </td>
+
+                      <td>
+                        <StatusBadge status={target.current_status} isEnabled={target.is_enabled} />
+                      </td>
+
+                      <td>
+                        {target.latency !== null && target.latency !== undefined ? (
+                          <span className="font-mono font-medium text-[var(--text-primary)]">
+                            {target.latency} ms
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[var(--text-muted)]">—</span>
+                        )}
+                      </td>
+
+                      <td>
+                        <span className="font-mono font-medium" style={{
+                          color: parseFloat(target.uptime_percentage) >= 99 ? 'var(--status-online)' :
+                                 parseFloat(target.uptime_percentage) >= 95 ? 'var(--status-warning)' : 'var(--status-critical)'
+                        }}>
+                          {target.uptime_percentage}
+                        </span>
+                      </td>
+
+                      <td>
+                        <Sparkline data={target.history_sparkline} status={target.current_status} width={75} height={20} />
+                      </td>
+
+                      <td>
+                        <span className="text-xs text-[var(--text-muted)] font-mono">
+                          {target.last_checked_at ? new Date(target.last_checked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Never'}
+                        </span>
+                      </td>
+
+                      <td className="text-right">
+                        <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => handleManualCheck(e, target)}
+                            disabled={isChecking || !target.is_enabled}
+                            title="Run manual probe check"
+                            className="btn-telemetry btn-secondary btn-icon text-xs"
+                          >
+                            <Play className={`w-3 h-3 ${isChecking ? 'animate-spin text-[var(--brand-primary)]' : ''}`} />
+                          </button>
+
+                          <button
+                            onClick={(e) => handleToggle(e, target)}
+                            title={target.is_enabled ? 'Pause monitoring' : 'Enable monitoring'}
+                            className="btn-telemetry btn-secondary btn-icon text-xs"
+                          >
+                            <Power className={`w-3 h-3 ${target.is_enabled ? 'text-[var(--status-online)]' : 'text-[var(--text-muted)]'}`} />
+                          </button>
+
+                          <button
+                            onClick={(e) => handleEdit(e, target)}
+                            title="Edit configuration"
+                            className="btn-telemetry btn-secondary btn-icon text-xs"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </button>
+
+                          <button
+                            onClick={(e) => handleDelete(e, target)}
+                            title="Decommission target"
+                            className="btn-telemetry btn-danger btn-icon text-xs"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
-        )}
+        </div>
       </div>
 
-      {showAddModal && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Add Monitored Target</h3>
-              <button 
-                onClick={() => setShowAddModal(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mu)' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateTarget}>
-              <div className="form-group">
-                <label>Target Name *</label>
-                <input 
-                  type="text" 
-                  required
-                  className="form-input"
-                  placeholder="e.g. Production Web API"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label>Target Type *</label>
-                  <select 
-                    className="form-input"
-                    value={formData.targetType}
-                    onChange={e => setFormData({ ...formData, targetType: e.target.value })}
-                  >
-                    <option value="website">Website</option>
-                    <option value="http_service">HTTP Service</option>
-                    <option value="host">Host / Server</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Check Method *</label>
-                  <select 
-                    className="form-input"
-                    value={formData.checkMethod}
-                    onChange={e => {
-                      const method = e.target.value;
-                      setFormData({ 
-                        ...formData, 
-                        checkMethod: method,
-                        address: method === 'icmp' && formData.address.startsWith('http') ? '8.8.8.8' : formData.address
-                      });
-                    }}
-                  >
-                    <option value="http">HTTP / HTTPS</option>
-                    <option value="icmp">ICMP Ping</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Address / Host *</label>
-                <input 
-                  type="text" 
-                  required
-                  className="form-input"
-                  placeholder={formData.checkMethod === 'http' ? 'https://example.com' : '8.8.8.8'}
-                  value={formData.address}
-                  onChange={e => setFormData({ ...formData, address: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <div className="form-group">
-                  <label>Interval (sec)</label>
-                  <input 
-                    type="number" 
-                    min="5"
-                    className="form-input"
-                    value={formData.checkIntervalSeconds}
-                    onChange={e => setFormData({ ...formData, checkIntervalSeconds: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Warning (ms)</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    className="form-input"
-                    value={formData.warningThresholdMs}
-                    onChange={e => setFormData({ ...formData, warningThresholdMs: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Critical (ms)</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    className="form-input"
-                    value={formData.criticalThresholdMs}
-                    onChange={e => setFormData({ ...formData, criticalThresholdMs: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Timeout (sec)</label>
-                <input 
-                  type="number" 
-                  min="1"
-                  max="60"
-                  className="form-input"
-                  value={formData.timeoutSeconds}
-                  onChange={e => setFormData({ ...formData, timeoutSeconds: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowAddModal(false)}
-                  className="btn btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                >
-                  Create Target
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Target Drawer */}
+      <TargetDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        target={selectedTarget}
+        onSave={(data) => {
+          if (selectedTarget) {
+            onUpdateTarget(data);
+            showToast(`Updated target: ${data.name}`);
+          } else {
+            onAddTarget(data);
+            showToast(`Provisioned new target: ${data.name}`);
+          }
+        }}
+      />
     </div>
   );
 }
-
