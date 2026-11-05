@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 /* ==========================================================================
-   ENTERPRISE NETWORK OBSERVABILITY DESIGN SYSTEM
-   Professional Developer-Tool Styling (GitHub-Inspired Light & Dark)
+   GITHUB-INSPIRED ENTERPRISE THEME SYSTEM (DARK & LIGHT)
+   Clean, mature developer-tool & network monitoring SaaS tokens
    ========================================================================== */
 
 :root,
@@ -13,7 +13,9 @@
 
   /* Surfaces */
   --bg-canvas: #0D1117;
+  --bg-primary: #0D1117;
   --bg-sidebar: #161B22;
+  --bg-header: #161B22;
   --bg-card: #161B22;
   --bg-card-hover: #1F242C;
   --bg-elevated: #21262D;
@@ -23,6 +25,7 @@
   --border-subtle: #30363D;
   --border-card: #30363D;
   --border-card-hover: #484F58;
+  --border-primary: #30363D;
 
   /* Typography */
   --text-primary: #E6EDF3;
@@ -30,12 +33,18 @@
   --text-muted: #6E7681;
   --text-inverse: #0D1117;
 
-  /* Brand / Links */
+  /* Primary Accent & Links */
   --brand-primary: #58A6FF;
-  --brand-hover: #79B8FF;
+  --brand-hover: #79C0FF;
   --brand-subtle: rgba(88, 166, 255, 0.12);
+  --text-link: #58A6FF;
 
-  /* Telemetry Status Colors */
+  /* Button Tokens */
+  --btn-primary-bg: #58A6FF;
+  --btn-primary-text: #0D1117;
+  --btn-primary-hover: #79C0FF;
+
+  /* Status Colors */
   --status-online: #3FB950;
   --status-online-bg: rgba(63, 185, 80, 0.12);
   --status-online-border: rgba(63, 185, 80, 0.3);
@@ -52,13 +61,24 @@
   --status-offline-bg: rgba(248, 81, 73, 0.12);
   --status-offline-border: rgba(248, 81, 73, 0.3);
 
-  --status-disabled: #6E7681;
-  --status-disabled-bg: rgba(110, 118, 129, 0.12);
+  --status-disabled: #8B949E;
+  --status-disabled-bg: rgba(139, 148, 158, 0.12);
   --status-disabled-border: #30363D;
+
+  --status-info: #58A6FF;
+  --status-info-bg: rgba(88, 166, 255, 0.12);
+  --status-info-border: rgba(88, 166, 255, 0.3);
 
   --status-unknown: #8B949E;
   --status-unknown-bg: rgba(139, 148, 158, 0.12);
   --status-unknown-border: #30363D;
+
+  /* Chart Visualization Tokens */
+  --chart-grid: #30363D;
+  --chart-axis: #8B949E;
+  --chart-tooltip-bg: #21262D;
+  --chart-tooltip-border: #30363D;
+  --chart-tooltip-text: #E6EDF3;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
@@ -71,29 +91,38 @@
 
   /* Surfaces */
   --bg-canvas: #F6F8FA;
+  --bg-primary: #F6F8FA;
   --bg-sidebar: #FFFFFF;
+  --bg-header: #FFFFFF;
   --bg-card: #FFFFFF;
   --bg-card-hover: #F3F4F6;
-  --bg-elevated: #F3F4F6;
+  --bg-elevated: #F6F8FA;
   --bg-input: #FFFFFF;
 
   /* Borders & Dividers */
   --border-subtle: #D0D7DE;
   --border-card: #D0D7DE;
   --border-card-hover: #AFB8C1;
+  --border-primary: #D0D7DE;
 
   /* Typography */
   --text-primary: #1F2328;
-  --text-secondary: #656D76;
-  --text-muted: #8C959F;
+  --text-secondary: #59636E;
+  --text-muted: #6E7781;
   --text-inverse: #FFFFFF;
 
-  /* Brand / Links */
+  /* Primary Accent & Links */
   --brand-primary: #0969DA;
-  --brand-hover: #0860CA;
+  --brand-hover: #0550AE;
   --brand-subtle: rgba(9, 105, 218, 0.08);
+  --text-link: #0969DA;
 
-  /* Telemetry Status Colors */
+  /* Button Tokens */
+  --btn-primary-bg: #0969DA;
+  --btn-primary-text: #FFFFFF;
+  --btn-primary-hover: #0550AE;
+
+  /* Status Colors */
   --status-online: #1A7F37;
   --status-online-bg: #DAFBE1;
   --status-online-border: rgba(26, 127, 55, 0.3);
@@ -110,13 +139,24 @@
   --status-offline-bg: #FFEBE9;
   --status-offline-border: rgba(207, 34, 46, 0.3);
 
-  --status-disabled: #57606A;
+  --status-disabled: #6E7781;
   --status-disabled-bg: #F6F8FA;
   --status-disabled-border: #D0D7DE;
 
-  --status-unknown: #656D76;
+  --status-info: #0969DA;
+  --status-info-bg: #DDF4FF;
+  --status-info-border: rgba(9, 105, 218, 0.3);
+
+  --status-unknown: #6E7781;
   --status-unknown-bg: #F6F8FA;
   --status-unknown-border: #D0D7DE;
+
+  /* Chart Visualization Tokens */
+  --chart-grid: #D0D7DE;
+  --chart-axis: #59636E;
+  --chart-tooltip-bg: #FFFFFF;
+  --chart-tooltip-border: #D0D7DE;
+  --chart-tooltip-text: #1F2328;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.05);
@@ -213,11 +253,11 @@ body {
 }
 
 .brand-icon-wrap {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
-  background: var(--brand-primary);
-  color: #ffffff;
+  background-color: var(--brand-primary);
+  color: var(--btn-primary-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -276,7 +316,7 @@ body {
   justify-content: space-between;
   padding: 0 28px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-sidebar);
+  background-color: var(--bg-header);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -304,7 +344,7 @@ body {
   box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease;
 }
 
 .telemetry-card:hover {
@@ -402,6 +442,13 @@ body {
 }
 .status-disabled .status-dot { background-color: var(--status-disabled); }
 
+.status-info {
+  background-color: var(--status-info-bg);
+  color: var(--status-info);
+  border-color: var(--status-info-border);
+}
+.status-info .status-dot { background-color: var(--status-info); }
+
 .status-unknown {
   background-color: var(--status-unknown-bg);
   color: var(--status-unknown);
@@ -430,13 +477,14 @@ body {
 }
 
 .btn-primary {
-  background-color: var(--brand-primary);
-  color: #ffffff;
-  border-color: var(--brand-primary);
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border-color: var(--btn-primary-bg);
+  font-weight: 600;
 }
 .btn-primary:hover {
-  background-color: var(--brand-hover);
-  border-color: var(--brand-hover);
+  background-color: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
 }
 
 .btn-secondary {
@@ -523,7 +571,6 @@ body {
   inset: 0;
   background-color: rgba(0, 0, 0, 0.55);
   z-index: 45;
-  backdrop-filter: none;
 }
 
 .telemetry-drawer {

@@ -179,9 +179,9 @@ export default function App() {
                 aria-label="Toggle theme"
               >
                 {theme === 'dark' ? (
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <Sun className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                 ) : (
-                  <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                  <Moon className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                 )}
               </button>
             </div>
