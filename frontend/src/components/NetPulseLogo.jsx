@@ -2,112 +2,95 @@ import React from 'react';
 
 /**
  * NetPulse Brand Icon SVG
- * Represents network node connectivity with an active real-time telemetry pulse waveform.
- * Primary palette: Deep Navy (#101B2D), Teal (#48D9C2), White (#FFFFFF)
+ * Custom vector logo combining terminal network nodes with a precision telemetry EKG pulse waveform.
+ * Exact visual match to the NetPulse brand identity specification.
+ * Primary palette: Teal (#48D9C2), White (#FFFFFF), Deep Navy (#101B2D).
  */
-export function NetPulseIcon({ size = 32, className = '' }) {
+export function NetPulseIcon({ width = 56, height = 28, className = '' }) {
   return (
     <svg 
       xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 32 32" 
-      width={size} 
-      height={size} 
+      viewBox="0 0 64 32" 
+      width={width} 
+      height={height} 
       className={`flex-shrink-0 select-none ${className}`}
       aria-label="NetPulse Logo Icon"
     >
       <defs>
-        <linearGradient id="netPulseBg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#101B2D" />
-          <stop offset="100%" stopColor="#0B1320" />
-        </linearGradient>
+        {/* Subtle soft glow for network nodes */}
+        <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#48D9C2" floodOpacity="0.5" />
+        </filter>
       </defs>
 
-      {/* Deep Navy Rounded Container with Teal Accent Border */}
-      <rect 
-        width="32" 
-        height="32" 
-        rx="8" 
-        fill="url(#netPulseBg)" 
-        stroke="#48D9C2" 
-        strokeWidth="1.2" 
-        strokeOpacity="0.4"
-      />
-      
-      {/* Subtle Apex Node Telemetry Halo */}
-      <circle 
-        cx="15.5" 
-        cy="8" 
-        r="4.5" 
-        fill="none" 
-        stroke="#48D9C2" 
-        strokeWidth="0.8" 
-        strokeOpacity="0.3" 
-      />
-      
-      {/* Network Pulse Waveform (ECG / Telemetry Trace) */}
+      {/* Network Pulse Waveform */}
       <path 
-        d="M 5.5 16 H 9.5 L 12 20 L 15.5 8 L 19 23 L 21.5 13 L 23.5 16 H 26.5" 
+        d="M 6 16 L 16 16 L 21 21 L 28 5 L 37 27 L 45 12 L 49 16 L 58 16" 
         fill="none" 
         stroke="#48D9C2" 
-        strokeWidth="2.2" 
+        strokeWidth="2.75" 
         strokeLinecap="round" 
         strokeLinejoin="round"
       />
       
-      {/* Left Ingestion Node */}
-      <circle cx="5.5" cy="16" r="2" fill="#FFFFFF" stroke="#48D9C2" strokeWidth="1.2" />
+      {/* Left Network Node */}
+      <circle cx="6" cy="16" r="3.75" fill="#48D9C2" filter="url(#nodeGlow)" />
+      <circle cx="6" cy="16" r="1.6" fill="#FFFFFF" />
 
-      {/* Apex Monitoring Node */}
-      <circle cx="15.5" cy="8" r="2.2" fill="#48D9C2" stroke="#FFFFFF" strokeWidth="1.2" />
-
-      {/* Right Target / Fleet Node */}
-      <circle cx="26.5" cy="16" r="2" fill="#FFFFFF" stroke="#48D9C2" strokeWidth="1.2" />
+      {/* Right Network Node */}
+      <circle cx="58" cy="16" r="3.75" fill="#48D9C2" filter="url(#nodeGlow)" />
+      <circle cx="58" cy="16" r="1.6" fill="#FFFFFF" />
     </svg>
   );
 }
 
 /**
- * NetPulse Complete Logo Component
- * Supports:
- * - 'icon': standalone icon badge
- * - 'compact': icon + NetPulse wordmark
- * - 'horizontal': icon + NetPulse wordmark + official tagline
+ * NetPulse Complete Wordmark & Horizontal Logo Component
+ * Matches the official NetPulse brand identity:
+ * [ Pulse Icon ] | NetPulse
+ *                | Network Quality Monitoring & Performance Intelligence
  */
 export default function NetPulseLogo({ 
-  variant = 'horizontal', 
-  size = 'md', 
+  variant = 'horizontal', // 'horizontal' | 'compact' | 'icon' | 'stacked'
+  size = 'md', // 'sm' | 'md' | 'lg'
   showTagline = true,
+  tagline = 'Network Quality Monitoring & Performance Intelligence',
   className = '' 
 }) {
-  const iconSizes = {
-    sm: 26,
-    md: 32,
-    lg: 40
+  const iconConfig = {
+    sm: { width: 44, height: 22, titleSize: 'text-base', tagSize: 'text-[9.5px]' },
+    md: { width: 56, height: 28, titleSize: 'text-lg', tagSize: 'text-[11px]' },
+    lg: { width: 72, height: 36, titleSize: 'text-2xl', tagSize: 'text-xs' }
   };
 
-  const currentSize = typeof size === 'number' ? size : (iconSizes[size] || 32);
+  const current = iconConfig[size] || iconConfig.md;
 
   if (variant === 'icon') {
-    return <NetPulseIcon size={currentSize} className={className} />;
+    return <NetPulseIcon width={current.width} height={current.height} className={className} />;
   }
 
   return (
-    <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      <NetPulseIcon size={currentSize} />
-      
-      <div className="flex flex-col min-w-0">
-        <div className="flex items-center tracking-tight leading-none">
-          <span className="font-extrabold text-base text-[var(--text-primary)]">
+    <div className={`inline-flex items-center gap-3 select-none ${className}`}>
+      {/* Vector Icon */}
+      <NetPulseIcon width={current.width} height={current.height} />
+
+      {/* Elegant Vertical Divider Line */}
+      <div className="h-7 w-[1px] bg-[var(--border-subtle)] opacity-70 flex-shrink-0" />
+
+      {/* Wordmark and Tagline */}
+      <div className="flex flex-col justify-center min-w-0">
+        <div className={`flex items-center tracking-tight leading-none ${current.titleSize}`}>
+          <span className="font-bold text-[var(--text-primary)]">
             Net
           </span>
-          <span className="font-extrabold text-base text-[#48D9C2] ml-0.5">
+          <span className="font-bold text-[#48D9C2]">
             Pulse
           </span>
         </div>
 
         {(variant === 'horizontal' && showTagline) && (
-          <span className="text-[10px] font-medium tracking-tight text-[var(--text-muted)] truncate mt-0.5">
-            Network Monitoring & Performance Intelligence
+          <span className={`font-normal tracking-tight text-[var(--text-secondary)] truncate mt-1 ${current.tagSize}`}>
+            {tagline}
           </span>
         )}
       </div>
