@@ -89,6 +89,12 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.3);
   --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.4);
+
+  /* Performance-First Motion Design Tokens (60 FPS) */
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-fast: 150ms;
+  --motion-normal: 200ms;
+  --motion-slow: 240ms;
 }
 
 [data-theme="light"] {
@@ -218,8 +224,22 @@ body {
 }
 
 /* ==========================================================================
-   LAYOUT STRUCTURE
+   LAYOUT STRUCTURE & THEME TRANSITIONS
    ========================================================================== */
+
+/* Smooth, non-disruptive Light/Dark theme cross-fades (color & bg only, no layout shifts) */
+body,
+.app-container,
+.app-sidebar,
+.app-content,
+.top-telemetry-bar,
+.telemetry-card,
+.drawer-header,
+.telemetry-drawer {
+  transition: background-color var(--motion-normal) ease, 
+              border-color var(--motion-normal) ease, 
+              color var(--motion-normal) ease;
+}
 
 .app-container {
   display: flex;
@@ -279,7 +299,9 @@ body {
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 180ms var(--motion-ease), 
+              color 180ms var(--motion-ease), 
+              border-color 180ms var(--motion-ease);
   border: 1px solid transparent;
 }
 
@@ -351,7 +373,8 @@ body {
   box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
-  transition: border-color 0.15s ease;
+  transition: border-color 180ms var(--motion-ease),
+              box-shadow 180ms var(--motion-ease);
 }
 
 .telemetry-card:hover {
@@ -463,8 +486,21 @@ body {
 }
 .status-unknown .status-dot { background-color: var(--status-unknown); }
 
+/* Immediate Real-Time Monitoring States: ZERO Transition Latency */
+.status-badge,
+.status-dot,
+.status-online,
+.status-warning,
+.status-critical,
+.status-offline,
+.status-disabled,
+.status-info,
+.status-unknown {
+  transition: none !important;
+}
+
 /* ==========================================================================
-   BUTTONS
+   BUTTONS (150ms Interactive Transitions & Tactile Feedback)
    ========================================================================== */
 
 .btn-telemetry {
@@ -478,9 +514,18 @@ body {
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--motion-fast) var(--motion-ease),
+              border-color var(--motion-fast) var(--motion-ease),
+              color var(--motion-fast) var(--motion-ease),
+              transform var(--motion-fast) var(--motion-ease),
+              box-shadow var(--motion-fast) var(--motion-ease);
   white-space: nowrap;
   user-select: none;
+}
+
+.btn-telemetry:active:not(:disabled) {
+  transform: scale(0.98);
+  transition-duration: 80ms;
 }
 
 .btn-primary {
@@ -489,9 +534,10 @@ body {
   border-color: var(--btn-primary-bg);
   font-weight: 600;
 }
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: var(--btn-primary-hover);
   border-color: var(--btn-primary-hover);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .btn-secondary {
@@ -499,7 +545,7 @@ body {
   border-color: var(--border-subtle);
   color: var(--text-primary);
 }
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background-color: var(--bg-card-hover);
   border-color: var(--border-card-hover);
 }
@@ -509,7 +555,7 @@ body {
   color: var(--status-critical);
   border-color: var(--status-critical-border);
 }
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
   background-color: var(--status-critical);
   color: #ffffff;
 }
@@ -562,7 +608,7 @@ body {
 
 .telemetry-table tbody tr.clickable-row {
   cursor: pointer;
-  transition: background-color 0.1s ease;
+  transition: background-color var(--motion-fast) ease;
 }
 
 .telemetry-table tbody tr.clickable-row:hover {
@@ -570,14 +616,38 @@ body {
 }
 
 /* ==========================================================================
-   DRAWERS & MODALS
+   PAGE, DRAWER, MODAL & NOTIFICATION ANIMATIONS
    ========================================================================== */
+
+/* Page View Transition: 200ms subtle fade & minimal 3px Y-shift */
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-view-enter {
+  animation: pageFadeIn var(--motion-normal) var(--motion-ease) forwards;
+  will-change: opacity, transform;
+}
+
+/* Backdrop Fade */
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 .drawer-backdrop {
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.55);
   z-index: 45;
+  animation: backdropFadeIn var(--motion-normal) ease forwards;
 }
 
 .telemetry-drawer {
@@ -594,7 +664,8 @@ body {
   flex-direction: column;
   box-shadow: var(--shadow-drawer);
   transform: translateX(100%);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--motion-slow) var(--motion-ease);
+  will-change: transform;
 }
 
 .telemetry-drawer.open {
@@ -614,6 +685,41 @@ body {
   padding: 20px;
   overflow-y: auto;
   flex: 1;
+}
+
+/* Toast Notification Animation */
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toast-notification {
+  animation: toastSlideIn var(--motion-normal) var(--motion-ease) forwards;
+  will-change: opacity, transform;
+}
+
+/* Chart Tooltip */
+@keyframes tooltipEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.chart-tooltip {
+  animation: tooltipEnter 120ms var(--motion-ease) forwards;
+  transition: top 100ms var(--motion-ease), left 100ms var(--motion-ease);
+  will-change: opacity, transform;
 }
 
 /* ==========================================================================
@@ -648,12 +754,29 @@ body {
   font-size: 0.8125rem;
   color: var(--text-primary);
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color var(--motion-fast) ease, 
+              box-shadow var(--motion-fast) ease,
+              background-color var(--motion-normal) ease;
 }
 
 .form-input:focus {
   border-color: var(--brand-primary);
   box-shadow: 0 0 0 2px var(--brand-subtle);
+}
+
+/* ==========================================================================
+   ACCESSIBILITY: RESPECT REDUCED MOTION PREFERENCES
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ==========================================================================

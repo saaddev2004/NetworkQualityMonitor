@@ -99,7 +99,7 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
     <div className="content-body">
       {/* Toast Feedback */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 p-3 px-4 rounded-md bg-[var(--bg-card)] border border-[var(--border-card-hover)] shadow-md flex items-center gap-2 text-xs font-medium text-[var(--text-primary)]">
+        <div className="toast-notification fixed bottom-6 right-6 z-50 p-3 px-4 rounded-md bg-[var(--bg-card)] border border-[var(--border-card-hover)] shadow-md flex items-center gap-2 text-xs font-medium text-[var(--text-primary)]">
           <CheckCircle2 className="w-4 h-4 text-[var(--status-online)]" />
           <span>{toastMessage}</span>
         </div>

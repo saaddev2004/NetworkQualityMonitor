@@ -217,7 +217,7 @@ export default function ResponseChart({ points = [], target, height = 200 }) {
       {/* Hover Tooltip Overlay */}
       {hoveredPoint && (
         <div
-          className="absolute z-10 px-2.5 py-1 rounded bg-[var(--chart-tooltip-bg)] border border-[var(--chart-tooltip-border)] shadow-md pointer-events-none text-xs font-mono"
+          className="chart-tooltip absolute z-10 px-2.5 py-1 rounded bg-[var(--chart-tooltip-bg)] border border-[var(--chart-tooltip-border)] shadow-md pointer-events-none text-xs font-mono"
           style={{
             left: `${Math.min(Math.max(10, (hoveredPoint.x / chartWidth) * 100), 85)}%`,
             top: `${Math.max(0, hoveredPoint.y - 40)}px`

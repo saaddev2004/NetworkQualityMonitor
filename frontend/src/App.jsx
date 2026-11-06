@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Targets from './pages/Targets';
@@ -153,54 +153,84 @@ export default function App() {
             </div>
           </header>
 
-          {/* Page Routing */}
-          <Routes>
-            <Route 
-              path="/" 
-              element={
-                <Dashboard 
-                  targets={targets} 
-                  events={events} 
-                  onAddTarget={handleAddTarget}
-                  onUpdateTarget={handleUpdateTarget}
-                />
-              } 
-            />
-            <Route 
-              path="/targets" 
-              element={
-                <Targets 
-                  targets={targets}
-                  onAddTarget={handleAddTarget}
-                  onUpdateTarget={handleUpdateTarget}
-                  onDeleteTarget={handleDeleteTarget}
-                  onToggleTarget={handleToggleTarget}
-                  onManualCheck={handleManualCheck}
-                />
-              } 
-            />
-            <Route 
-              path="/targets/:id" 
-              element={
-                <TargetDetails 
-                  targets={targets}
-                  events={events}
-                  onUpdateTarget={handleUpdateTarget}
-                  onManualCheck={handleManualCheck}
-                />
-              } 
-            />
-            <Route 
-              path="/events" 
-              element={
-                <Events 
-                  events={events} 
-                />
-              } 
-            />
-          </Routes>
+          {/* Page Routing with Subtle 200ms Transition */}
+          <AnimatedRoutes 
+            targets={targets}
+            events={events}
+            onAddTarget={handleAddTarget}
+            onUpdateTarget={handleUpdateTarget}
+            onDeleteTarget={handleDeleteTarget}
+            onToggleTarget={handleToggleTarget}
+            onManualCheck={handleManualCheck}
+          />
         </main>
       </div>
     </Router>
+  );
+}
+
+/**
+ * AnimatedRoutes Component
+ * Manages subtle 200ms fade & minimal Y-shift page transitions on route navigation
+ */
+function AnimatedRoutes({ 
+  targets, 
+  events, 
+  onAddTarget, 
+  onUpdateTarget, 
+  onDeleteTarget, 
+  onToggleTarget, 
+  onManualCheck 
+}) {
+  const location = useLocation();
+
+  return (
+    <div key={location.pathname} className="page-view-enter">
+      <Routes location={location}>
+        <Route 
+          path="/" 
+          element={
+            <Dashboard 
+              targets={targets} 
+              events={events} 
+              onAddTarget={onAddTarget}
+              onUpdateTarget={onUpdateTarget}
+            />
+          } 
+        />
+        <Route 
+          path="/targets" 
+          element={
+            <Targets 
+              targets={targets}
+              onAddTarget={onAddTarget}
+              onUpdateTarget={onUpdateTarget}
+              onDeleteTarget={onDeleteTarget}
+              onToggleTarget={onToggleTarget}
+              onManualCheck={onManualCheck}
+            />
+          } 
+        />
+        <Route 
+          path="/targets/:id" 
+          element={
+            <TargetDetails 
+              targets={targets}
+              events={events}
+              onUpdateTarget={onUpdateTarget}
+              onManualCheck={onManualCheck}
+            />
+          } 
+        />
+        <Route 
+          path="/events" 
+          element={
+            <Events 
+              events={events} 
+            />
+          } 
+        />
+      </Routes>
+    </div>
   );
 }
