@@ -7,7 +7,6 @@ import TargetDetails from './pages/TargetDetails';
 import Events from './pages/Events';
 import { initialTargets, initialEvents } from './data/mockData';
 import { Sun, Moon } from 'lucide-react';
-import NetPulseLogo from './components/NetPulseLogo';
 import './index.css';
 
 export default function App() {
@@ -123,8 +122,10 @@ export default function App() {
         <main className="app-content">
           {/* Top Telemetry Global Header */}
           <header className="top-telemetry-bar">
-            <div className="flex items-center gap-3">
-              <NetPulseLogo variant="horizontal" size="sm" showTagline={true} />
+            <div className="flex items-center gap-2 text-xs font-mono text-[var(--text-muted)]">
+              <span className="text-[var(--text-secondary)] font-medium text-[11px] uppercase tracking-wider">
+                Telemetry Observability
+              </span>
             </div>
 
             <div className="flex items-center gap-4">
