@@ -41,7 +41,7 @@ export default function Sidebar({
     <aside className="app-sidebar">
       {/* Brand Header */}
       <div className="brand-badge">
-        <NetPulseLogo variant="horizontal" size="sm" showTagline={true} />
+        <NetPulseLogo variant="horizontal" size="md" showTagline={false} />
       </div>
 
       {/* Navigation Section */}
