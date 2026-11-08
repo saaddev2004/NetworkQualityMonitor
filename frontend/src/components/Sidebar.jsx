@@ -5,7 +5,8 @@ import {
   Server, 
   AlertTriangle, 
   Sun, 
-  Moon 
+  Moon,
+  X 
 } from 'lucide-react';
 import NetPulseLogo from './NetPulseLogo';
 
@@ -13,7 +14,9 @@ export default function Sidebar({
   targetsCount = 8, 
   activeAlertsCount = 3, 
   theme = 'dark', 
-  onToggleTheme
+  onToggleTheme,
+  isOpen = false,
+  onClose
 }) {
   const navItems = [
     {
@@ -37,11 +40,26 @@ export default function Sidebar({
     }
   ];
 
+  const handleNavClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className="app-sidebar">
+    <aside className={`app-sidebar ${isOpen ? 'mobile-open' : ''}`}>
       {/* Brand Header */}
-      <div className="brand-badge">
+      <div className="brand-badge flex items-center justify-between">
         <NetPulseLogo variant="horizontal" size="md" showTagline={false} />
+        {/* Mobile Close Button (Hidden on desktop) */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn-telemetry btn-icon btn-secondary lg:hidden ml-auto"
+          aria-label="Close navigation menu"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Navigation Section */}
@@ -56,6 +74,7 @@ export default function Sidebar({
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={handleNavClick}
               className={({ isActive }) => `nav-link-btn ${isActive ? 'active' : ''}`}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />

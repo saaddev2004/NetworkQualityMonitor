@@ -245,9 +245,11 @@ body,
   display: flex;
   min-height: 100vh;
   width: 100%;
+  max-width: 100vw;
   background-color: var(--bg-canvas);
   color: var(--text-primary);
   position: relative;
+  overflow-x: hidden;
 }
 
 /* Sidebar Rail (Strictly Fixed to Viewport) */
@@ -330,12 +332,14 @@ body,
 .app-content {
   margin-left: 260px;
   width: calc(100% - 260px);
+  max-width: calc(100% - 260px);
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 100vh;
   background-color: var(--bg-canvas);
+  overflow-x: hidden;
 }
 
 .top-telemetry-bar {
@@ -780,23 +784,143 @@ body,
 }
 
 /* ==========================================================================
-   RESPONSIVE BREAKPOINTS
+   RESPONSIVE DESIGN SYSTEM (ALL BREAKPOINTS 320px - 1440px+)
    ========================================================================== */
 
-@media (max-width: 1024px) {
+/* No scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Tablet & Mobile Drawer Transition (< 1024px) */
+@media (max-width: 1023px) {
+  .app-sidebar {
+    width: 280px;
+    max-width: 85vw;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform var(--motion-slow) cubic-bezier(0.16, 1, 0.3, 1),
+                background-color var(--motion-normal) ease, 
+                border-color var(--motion-normal) ease;
+    box-shadow: none;
+  }
+
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 0 0 45px rgba(0, 0, 0, 0.55);
+  }
+
+  .sidebar-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(2px);
+    z-index: 55;
+    animation: fadeIn var(--motion-fast) ease forwards;
+  }
+
+  .app-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .top-telemetry-bar {
+    padding: 0 18px;
+  }
+
   .content-body {
-    padding: 20px 24px;
+    padding: 20px 18px;
     gap: 18px;
   }
 }
 
-@media (max-width: 768px) {
+/* Standard Mobile (< 768px) */
+@media (max-width: 767px) {
   .top-telemetry-bar {
-    padding: 0 16px;
+    padding: 0 14px;
+    height: 52px;
   }
 
   .content-body {
-    padding: 16px;
-    gap: 16px;
+    padding: 16px 14px;
+    gap: 14px;
+  }
+
+  .telemetry-card-header {
+    padding: 12px 14px;
+  }
+
+  .telemetry-card-body {
+    padding: 14px;
+  }
+
+  .kpi-card {
+    padding: 12px 14px;
+  }
+
+  .kpi-value {
+    font-size: 1.5rem;
+  }
+
+  .telemetry-drawer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .drawer-header {
+    padding: 14px 16px;
+  }
+
+  .drawer-body {
+    padding: 16px 14px;
+  }
+}
+
+/* Small Mobile (< 430px) */
+@media (max-width: 429px) {
+  .top-telemetry-bar {
+    padding: 0 10px;
+    height: 50px;
+  }
+
+  .content-body {
+    padding: 12px 10px;
+    gap: 12px;
+  }
+
+  .telemetry-card-header {
+    padding: 10px 12px;
+  }
+
+  .telemetry-card-body {
+    padding: 12px;
+  }
+
+  .kpi-card {
+    padding: 10px 12px;
+  }
+
+  .kpi-value {
+    font-size: 1.35rem;
+  }
+
+  .form-input {
+    font-size: 0.8125rem;
+    padding: 8px 10px;
+  }
+
+  .btn-telemetry {
+    padding: 6px 10px;
+    font-size: 0.75rem;
   }
 }

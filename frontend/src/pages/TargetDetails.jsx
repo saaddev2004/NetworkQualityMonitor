@@ -138,7 +138,7 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleManualCheck}
             disabled={isChecking || !target.is_enabled}
@@ -272,12 +272,12 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
           </span>
         </div>
 
-        <div className="grid grid-cols-15 sm:grid-cols-30 gap-1 pt-1">
+        <div className="flex items-stretch gap-0.5 sm:gap-1 pt-1 overflow-x-auto pb-1">
           {availabilityDays.map((day, idx) => (
             <div
               key={idx}
               title={`${day.date}: ${day.uptime}% uptime`}
-              className="h-6 rounded-sm cursor-pointer transition hover:opacity-80"
+              className="h-6 flex-1 min-w-[6px] sm:min-w-[8px] rounded-sm cursor-pointer transition hover:opacity-80"
               style={{
                 backgroundColor: day.uptime >= 99 ? 'var(--status-online)' :
                                  day.uptime >= 95 ? 'var(--status-warning)' : 'var(--status-critical)'

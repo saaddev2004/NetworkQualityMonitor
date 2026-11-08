@@ -82,7 +82,7 @@ export default function Dashboard({ targets = [], events = [], onAddTarget, onUp
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -182,7 +182,7 @@ export default function Dashboard({ targets = [], events = [], onAddTarget, onUp
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left 2 Cols: Response Time Visualization */}
         <div className="lg:col-span-2 telemetry-card flex flex-col">
-          <div className="telemetry-card-header">
+          <div className="telemetry-card-header flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-[var(--text-primary)]">
                 Response Time History
@@ -192,7 +192,7 @@ export default function Dashboard({ targets = [], events = [], onAddTarget, onUp
               </p>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {['1h', '6h', '12h', '24h', '7d'].map((range) => (
                 <button
                   key={range}
@@ -211,7 +211,7 @@ export default function Dashboard({ targets = [], events = [], onAddTarget, onUp
 
           <div className="p-4 flex-1 flex flex-col justify-between">
             {/* Latency Summary Stats */}
-            <div className="flex items-center gap-6 mb-3 text-xs">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6 mb-3 text-xs">
               <div>
                 <span className="text-[var(--text-muted)] block text-[10px] uppercase font-semibold">Average Latency</span>
                 <span className="font-mono font-bold text-sm text-[var(--text-primary)]">{avgLatency} ms</span>

@@ -6,12 +6,13 @@ import Targets from './pages/Targets';
 import TargetDetails from './pages/TargetDetails';
 import Events from './pages/Events';
 import { initialTargets, initialEvents } from './data/mockData';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Menu } from 'lucide-react';
 import './index.css';
 
 export default function App() {
   const [targets, setTargets] = useState(initialTargets);
   const [events, setEvents] = useState(initialEvents);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Theme State management (Dark mode by default, toggleable to light)
   const [theme, setTheme] = useState(() => {
@@ -110,32 +111,55 @@ export default function App() {
   return (
     <Router>
       <div className="app-container">
-        {/* Navigation Sidebar (Always Sticky / Fixed) */}
+        {/* Mobile Backdrop Overlay (Hidden on desktop) */}
+        {sidebarOpen && (
+          <div 
+            className="sidebar-mobile-backdrop lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Navigation Sidebar (Fixed on Desktop, Off-Canvas Drawer on Mobile/Tablet) */}
         <Sidebar 
           targetsCount={targets.length} 
           activeAlertsCount={activeAlertsCount} 
           theme={theme}
           onToggleTheme={toggleTheme}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
 
         {/* Main Work Area */}
         <main className="app-content">
           {/* Top Telemetry Global Header */}
           <header className="top-telemetry-bar">
-            <div className="flex items-center gap-2 text-xs font-mono text-[var(--text-muted)]">
-              <span className="text-[var(--text-secondary)] font-medium text-[11px] uppercase tracking-wider">
-                Telemetry Observability
-              </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="btn-telemetry btn-icon btn-secondary lg:hidden -ml-1 mr-1"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-2 text-xs font-mono text-[var(--text-muted)]">
+                <span className="text-[var(--text-secondary)] font-medium text-[11px] uppercase tracking-wider">
+                  Telemetry Observability
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-xs font-mono text-[var(--text-muted)]">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-mono text-[var(--text-muted)]">
                 <span className="status-dot" style={{ background: 'var(--status-online)' }} />
                 <span className="hidden sm:inline">ENGINE: ONLINE</span>
               </div>
-              <div className="h-4 w-px bg-[var(--border-subtle)]" />
+              <div className="h-4 w-px bg-[var(--border-subtle)] hidden sm:block" />
               <div className="text-xs font-mono text-[var(--text-muted)]">
-                PROBES: <span className="text-[var(--text-primary)] font-semibold">{targets.length}</span>
+                <span className="hidden sm:inline">PROBES: </span>
+                <span className="text-[var(--text-primary)] font-semibold">{targets.length}</span>
               </div>
               <div className="h-4 w-px bg-[var(--border-subtle)]" />
               <button
@@ -202,7 +226,7 @@ function AnimatedRoutes({
           path="/targets" 
           element={
             <Targets 
-              targets={targets}
+              targets={targets} 
               onAddTarget={onAddTarget}
               onUpdateTarget={onUpdateTarget}
               onDeleteTarget={onDeleteTarget}
@@ -215,7 +239,7 @@ function AnimatedRoutes({
           path="/targets/:id" 
           element={
             <TargetDetails 
-              targets={targets}
+              targets={targets} 
               events={events}
               onUpdateTarget={onUpdateTarget}
               onManualCheck={onManualCheck}

@@ -139,7 +139,7 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="form-group">
                   <label className="form-label">Target Category</label>
                   <select
@@ -199,7 +199,7 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
                 2. Probe Scheduling
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="form-group">
                   <label className="form-label">Check Interval (sec)</label>
                   <input
@@ -247,7 +247,7 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
                 3. SLA Latency Thresholds
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="form-group">
                   <label className="form-label">Warning (ms)</label>
                   <input

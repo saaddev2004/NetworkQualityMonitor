@@ -189,7 +189,7 @@ export default function Targets({
       {/* Filter and Search Bar */}
       <div className="telemetry-card p-3 space-y-3">
         {/* Status Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {[
             { id: 'all', label: 'All Targets', count: counts.all },
             { id: 'online', label: 'Online', count: counts.online, color: 'var(--status-online)' },
@@ -219,7 +219,7 @@ export default function Targets({
         </div>
 
         {/* Search & Category Selectors */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-[var(--border-subtle)]">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-2 border-t border-[var(--border-subtle)]">
           <div className="relative flex-1 max-w-md">
             <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
