@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
+import Sidebar from './components/layout/Sidebar';
+import TopTelemetryBar from './components/layout/TopTelemetryBar';
 import Dashboard from './pages/Dashboard';
 import Targets from './pages/Targets';
 import TargetDetails from './pages/TargetDetails';
 import Events from './pages/Events';
 import { initialTargets, initialEvents } from './data/mockData';
-import { Sun, Moon, Menu } from 'lucide-react';
 import './index.css';
 
+/**
+ * Root Application Component
+ * Coordinates routing, telemetry data state, responsive drawer overlay, and Light/Dark theme switching
+ */
 export default function App() {
   const [targets, setTargets] = useState(initialTargets);
   const [events, setEvents] = useState(initialEvents);
@@ -133,49 +137,13 @@ export default function App() {
         {/* Main Work Area */}
         <main className="app-content">
           {/* Top Telemetry Global Header */}
-          <header className="top-telemetry-bar">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="btn-telemetry btn-icon btn-secondary lg:hidden -ml-1 mr-1"
-                aria-label="Open navigation menu"
-              >
-                <Menu className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-2 text-xs font-mono text-[var(--text-muted)]">
-                <span className="text-[var(--text-secondary)] font-medium text-[11px] uppercase tracking-wider">
-                  Telemetry Observability
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-mono text-[var(--text-muted)]">
-                <span className="status-dot" style={{ background: 'var(--status-online)' }} />
-                <span className="hidden sm:inline">ENGINE: ONLINE</span>
-              </div>
-              <div className="h-4 w-px bg-[var(--border-subtle)] hidden sm:block" />
-              <div className="text-xs font-mono text-[var(--text-muted)]">
-                <span className="hidden sm:inline">PROBES: </span>
-                <span className="text-[var(--text-primary)] font-semibold">{targets.length}</span>
-              </div>
-              <div className="h-4 w-px bg-[var(--border-subtle)]" />
-              <button
-                onClick={toggleTheme}
-                className="btn-telemetry btn-icon btn-secondary text-xs"
-                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
-                )}
-              </button>
-            </div>
-          </header>
+          <TopTelemetryBar
+            probesCount={targets.length}
+            isEngineOnline={true}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onOpenMobileSidebar={() => setSidebarOpen(true)}
+          />
 
           {/* Page Routing with Subtle 200ms Transition */}
           <AnimatedRoutes 
