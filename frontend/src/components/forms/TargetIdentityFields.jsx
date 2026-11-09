@@ -52,9 +52,20 @@ export default function TargetIdentityFields({
             value={formData.check_method}
             onChange={(e) => {
               const method = e.target.value;
+              let newAddress = formData.address;
+              if (method === 'icmp' && (newAddress.startsWith('http://') || newAddress.startsWith('https://'))) {
+                try {
+                  const url = new URL(newAddress);
+                  newAddress = url.hostname;
+                } catch {
+                  newAddress = newAddress.replace(/^https?:\/\//i, '').split('/')[0].split(':')[0];
+                }
+              } else if (method === 'http' && newAddress && !newAddress.startsWith('http://') && !newAddress.startsWith('https://')) {
+                newAddress = `https://${newAddress}`;
+              }
               onChange({
                 check_method: method,
-                address: method === 'icmp' && formData.address.startsWith('http') ? '10.0.0.1' : formData.address
+                address: newAddress
               });
             }}
             className="form-input"
@@ -69,7 +80,7 @@ export default function TargetIdentityFields({
         <label className="form-label">Endpoint Address / Host *</label>
         <input
           type="text"
-          placeholder={formData.check_method === 'http' ? 'https://api.domain.com/health' : '10.0.0.1'}
+          placeholder={formData.check_method === 'http' ? 'https://api.domain.com/health' : 'e.g. 8.8.8.8 or gateway.local'}
           value={formData.address}
           onChange={(e) => onChange({ address: e.target.value })}
           className="form-input font-mono text-xs"

@@ -11,7 +11,8 @@ export default function TargetDetailsHeader({
   isChecking = false,
   onBack,
   onManualCheck,
-  onConfigure
+  onConfigure,
+  onModifyThresholds
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-4 pb-1">
@@ -59,11 +60,12 @@ export default function TargetDetailsHeader({
         </button>
 
         <button
-          onClick={onConfigure}
+          onClick={onModifyThresholds}
           className="btn-telemetry btn-primary"
+          title="Jump to Monitoring Configuration & Thresholds"
         >
           <Edit3 className="w-3.5 h-3.5" />
-          <span>Configure Target</span>
+          <span>Modify Alert Threshold</span>
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, AlertTriangle, AlertCircle, Info, Clock, CheckCircle2 } from 'lucide-react';
 import { formatTimestamp, formatDuration } from '../../utils/formatters';
 
@@ -7,17 +8,44 @@ import { formatTimestamp, formatDuration } from '../../utils/formatters';
  * Slide-out diagnostics inspector for individual incident events
  */
 export default function EventDetailDrawer({ isOpen, onClose, event }) {
+  // Lock background body scroll while drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  // Support ESC key to dismiss drawer
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !event) return null;
 
   const isResolved = !!event.is_resolved;
   const isCritical = event.severity === 'critical';
   const isWarning = event.severity === 'warning';
 
-  return (
+  return createPortal(
     <>
       <div className="drawer-backdrop" onClick={onClose} />
-      <div className={`telemetry-drawer ${isOpen ? 'open' : ''}`}>
-        <div className="drawer-header">
+      <div 
+        className={`telemetry-drawer ${isOpen ? 'open' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Incident Diagnostics #${event.id}`}
+      >
+        {/* Pinned Non-Scrolling Header */}
+        <div className="drawer-header flex-shrink-0">
           <div className="flex items-center gap-2.5">
             <div className={`p-1.5 rounded border ${
               isCritical ? 'bg-[var(--status-critical-bg)] text-[var(--status-critical)] border-[var(--status-critical-border)]' :
@@ -46,7 +74,8 @@ export default function EventDetailDrawer({ isOpen, onClose, event }) {
           </button>
         </div>
 
-        <div className="drawer-body space-y-5">
+        {/* Scrollable Diagnostics Body */}
+        <div className="drawer-body flex-1 overflow-y-auto p-5 space-y-5">
           {/* Status Banner */}
           <div className="p-3 rounded-lg border flex items-center justify-between" style={{
             backgroundColor: isResolved ? 'var(--status-online-bg)' : isCritical ? 'var(--status-critical-bg)' : 'var(--status-warning-bg)',
@@ -132,7 +161,19 @@ export default function EventDetailDrawer({ isOpen, onClose, event }) {
             </div>
           </div>
         </div>
+
+        {/* Pinned Sticky Footer - ALWAYS accessible without scrolling */}
+        <div className="drawer-footer flex-shrink-0 p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-sidebar)] flex items-center justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-telemetry btn-secondary"
+          >
+            Close Diagnostics
+          </button>
+        </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

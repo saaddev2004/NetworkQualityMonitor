@@ -7,6 +7,7 @@ import Targets from './pages/Targets';
 import TargetDetails from './pages/TargetDetails';
 import Events from './pages/Events';
 import Settings from './pages/Settings';
+import ScrollToTop from './components/common/ScrollToTop';
 import { getEvents } from './services/eventService';
 import { getTargets, createTarget, updateTarget, deleteTarget, toggleTarget, checkTarget } from './services/targetService';
 import { getDashboardSummary } from './services/dashboardService';
@@ -384,8 +385,20 @@ export default function App() {
 
   const activeAlertsCount = events.filter(e => !e.is_resolved).length;
 
+  // Lock background scrolling when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [sidebarOpen]);
+
   return (
     <Router>
+      <ScrollToTop />
       <div className="app-container">
         {/* Mobile Backdrop Overlay (Hidden on desktop) */}
         {sidebarOpen && (

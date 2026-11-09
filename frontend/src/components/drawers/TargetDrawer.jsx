@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Server, Globe, Cpu, Check, AlertCircle } from 'lucide-react';
 import TargetIdentityFields from '../forms/TargetIdentityFields';
 import TargetScheduleFields from '../forms/TargetScheduleFields';
@@ -55,6 +56,27 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
     setFormError(null);
     setIsSubmitting(false);
   }, [target, isOpen]);
+
+  // Lock background body scroll while drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  // Support ESC key to dismiss drawer
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -140,11 +162,17 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
     }
   };
 
-  return (
+  return createPortal(
     <>
       <div className="drawer-backdrop" onClick={onClose} />
-      <div className={`telemetry-drawer ${isOpen ? 'open' : ''}`}>
-        <div className="drawer-header">
+      <div 
+        className={`telemetry-drawer ${isOpen ? 'open' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={target ? 'Edit Monitored Target' : 'Provision New Target'}
+      >
+        {/* Pinned Non-Scrolling Header */}
+        <div className="drawer-header flex-shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded bg-[var(--brand-subtle)] text-[var(--brand-primary)]">
               {formData.target_type === 'website' && <Globe className="w-4 h-4" />}
@@ -169,8 +197,10 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="drawer-body flex flex-col justify-between">
-          <div className="space-y-5">
+        {/* Form Container spanning remaining height with scrollable body & pinned footer */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Scrollable Form Body */}
+          <div className="drawer-body flex-1 overflow-y-auto p-5 space-y-5">
             {formError && (
               <div className="p-3 rounded-lg border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical)] text-xs flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -198,8 +228,8 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
             />
           </div>
 
-          {/* Sticky Drawer Footer */}
-          <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-sidebar)] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 flex-shrink-0 mt-6">
+          {/* Pinned Sticky Footer - ALWAYS accessible without scrolling */}
+          <div className="drawer-footer flex-shrink-0 p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-sidebar)] flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
@@ -228,6 +258,7 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
           </div>
         </form>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

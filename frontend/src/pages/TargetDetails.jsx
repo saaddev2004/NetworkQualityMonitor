@@ -25,6 +25,7 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
 
   const target = targets.find(t => t.id === targetId);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isEditingThresholds, setIsEditingThresholds] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [chartRange, setChartRange] = useState('24h');
@@ -251,6 +252,16 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const handleModifyThresholds = () => {
+    setIsEditingThresholds(true);
+    setTimeout(() => {
+      const el = document.getElementById('monitoring-configuration-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  };
+
   const handleManualCheck = async () => {
     if (isChecking) return;
     if (!target.is_enabled) {
@@ -303,6 +314,7 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
         onBack={() => navigate('/targets')}
         onManualCheck={handleManualCheck}
         onConfigure={() => setIsDrawerOpen(true)}
+        onModifyThresholds={handleModifyThresholds}
       />
 
       {/* Target Health Metrics Strip */}
@@ -335,11 +347,19 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
       />
 
       {/* Two Column Layout: Configuration & Recent Checks History */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <TargetConfigCard
-          target={target}
-          onConfigure={() => setIsDrawerOpen(true)}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <div id="monitoring-configuration-section" className="scroll-mt-header">
+          <TargetConfigCard
+            target={target}
+            isEditing={isEditingThresholds}
+            setIsEditing={setIsEditingThresholds}
+            onConfigure={() => setIsDrawerOpen(true)}
+            onUpdateTarget={async (updated) => {
+              await onUpdateTarget({ ...target, ...updated });
+            }}
+            showToast={showToast}
+          />
+        </div>
         <RecentProbesTable 
           checkLogs={historyLogs}
           isLoading={isLoadingHistory}

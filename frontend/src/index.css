@@ -623,21 +623,24 @@ body,
    PAGE, DRAWER, MODAL & NOTIFICATION ANIMATIONS
    ========================================================================== */
 
-/* Page View Transition: 200ms subtle fade & minimal 3px Y-shift */
+/* Page View Transition: 200ms subtle fade */
 @keyframes pageFadeIn {
   from {
     opacity: 0;
-    transform: translateY(3px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .page-view-enter {
   animation: pageFadeIn var(--motion-normal) var(--motion-ease) forwards;
-  will-change: opacity, transform;
+  will-change: opacity;
+}
+
+/* Scroll Offset Clearance for Sticky Top Telemetry Bar (56px) */
+.scroll-mt-header {
+  scroll-margin-top: 80px;
 }
 
 /* Backdrop Fade */
@@ -650,7 +653,7 @@ body,
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.55);
-  z-index: 45;
+  z-index: 65;
   animation: backdropFadeIn var(--motion-normal) ease forwards;
 }
 
@@ -659,17 +662,21 @@ body,
   top: 0;
   right: 0;
   bottom: 0;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   width: 100%;
   max-width: 480px;
   background-color: var(--bg-card);
   border-left: 1px solid var(--border-subtle);
-  z-index: 50;
+  z-index: 70;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-drawer);
   transform: translateX(100%);
   transition: transform var(--motion-slow) var(--motion-ease);
   will-change: transform;
+  overflow: hidden;
 }
 
 .telemetry-drawer.open {
@@ -683,12 +690,27 @@ body,
   align-items: center;
   justify-content: space-between;
   background-color: var(--bg-sidebar);
+  flex-shrink: 0;
 }
 
 .drawer-body {
   padding: 20px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--bg-sidebar);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  z-index: 10;
 }
 
 /* Toast Notification Animation */
