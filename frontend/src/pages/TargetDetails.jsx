@@ -9,8 +9,9 @@ import TargetConfigCard from '../components/target-details/TargetConfigCard';
 import RecentProbesTable from '../components/target-details/RecentProbesTable';
 import TargetDrawer from '../components/TargetDrawer';
 import ToastNotification from '../components/common/ToastNotification';
-import { generateTimeSeries } from '../data/mockData';
 import { getTargetHistory, getTargetUptime } from '../services/targetService';
+import { getMonitoringHistory } from '../services/historyService';
+import { exportProbeResultsReport } from '../services/reportService';
 
 /**
  * TargetDetails Page
@@ -34,11 +35,18 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
   const [historyError, setHistoryError] = useState(null);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isExportingResults, setIsExportingResults] = useState(false);
 
   // Live uptime SLA state
   const [uptimeData, setUptimeData] = useState(null);
   const [isLoadingUptime, setIsLoadingUptime] = useState(true);
   const [uptimeError, setUptimeError] = useState(null);
+
+  // Live chart response-time history state
+  const [chartPoints, setChartPoints] = useState([]);
+  const [chartMetrics, setChartMetrics] = useState({ avgLatency: null, minLatency: null, maxLatency: null });
+  const [isLoadingChart, setIsLoadingChart] = useState(true);
+  const [chartError, setChartError] = useState(null);
 
   // Fetch initial history with cancellation guard to prevent stale overwrites
   const loadInitialHistory = useCallback(async (silent = false) => {
@@ -180,11 +188,44 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
     };
   }, [targetId]);
 
-  // Synthetic 32-cycle time-series for chart (Task 11)
-  const timeSeries = useMemo(() => {
-    if (!target) return [];
-    return generateTimeSeries(target);
-  }, [target]);
+  // Fetch real response-time history curve and summary statistics
+  const loadChartHistory = useCallback(async (silent = false) => {
+    if (!targetId || isNaN(targetId)) return;
+    if (!silent) {
+      setIsLoadingChart(true);
+      setChartError(null);
+    }
+    try {
+      const result = await getMonitoringHistory(targetId, { range: chartRange });
+      setChartPoints(result.points || []);
+      setChartMetrics({
+        avgLatency: result.avgLatency,
+        minLatency: result.minLatency,
+        maxLatency: result.maxLatency
+      });
+    } catch (err) {
+      console.error('Failed to fetch target chart history:', err);
+      const errMsg = err.response?.data?.error?.message 
+        || (err.code === 'ERR_NETWORK' 
+          ? 'Unable to connect to backend API server. Please ensure the backend is running.' 
+          : err.message)
+        || 'Failed to load chart history';
+      if (!silent) {
+        setChartError(errMsg);
+        setChartPoints([]);
+        setChartMetrics({ avgLatency: null, minLatency: null, maxLatency: null });
+      }
+    } finally {
+      if (!silent) {
+        setIsLoadingChart(false);
+      }
+    }
+  }, [targetId, chartRange]);
+
+  // Synchronize chart history whenever target or time range changes
+  useEffect(() => {
+    loadChartHistory(false);
+  }, [loadChartHistory]);
 
   if (!target) {
     return (
@@ -224,9 +265,10 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
         ? ` (${outcome.result.responseTimeMs} ms)`
         : '';
       showToast(`Probe completed for ${target.name}: ${outcome?.status || 'done'}${latencyText}`);
-      // Refresh probe history and uptime SLA silently so the new probe cycle is immediately reflected
+      // Refresh probe history, uptime SLA, and chart history silently so the new probe cycle is immediately reflected
       loadInitialHistory(true);
       loadUptime(true);
+      loadChartHistory(true);
     } catch (err) {
       showToast(err.message || `Manual probe failed for ${target.name}`);
     } finally {
@@ -234,10 +276,20 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
     }
   };
 
-  const validPoints = timeSeries.map(p => p.latency).filter(v => v !== null && v !== undefined);
-  const minLatency = validPoints.length ? Math.min(...validPoints) : 0;
-  const maxLatency = validPoints.length ? Math.max(...validPoints) : 0;
-  const avgLatency = validPoints.length ? Math.round(validPoints.reduce((a, b) => a + b, 0) / validPoints.length) : 0;
+  const handleExportResults = async () => {
+    if (isExportingResults || !targetId) return;
+    setIsExportingResults(true);
+    try {
+      const res = await exportProbeResultsReport({ targetId });
+      const kb = (res.size / 1024).toFixed(1);
+      showToast(`Exported ${res.filename} (${kb} KB) successfully`);
+    } catch (err) {
+      console.error('Failed to export probe results CSV:', err);
+      showToast(err.message || 'Failed to download probe results report');
+    } finally {
+      setIsExportingResults(false);
+    }
+  };
 
   return (
     <div className="content-body">
@@ -256,9 +308,9 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
       {/* Target Health Metrics Strip */}
       <TargetMetricsStrip
         target={target}
-        avgLatency={avgLatency}
-        minLatency={minLatency}
-        maxLatency={maxLatency}
+        avgLatency={chartMetrics.avgLatency}
+        minLatency={chartMetrics.minLatency}
+        maxLatency={chartMetrics.maxLatency}
         uptimeData={uptimeData}
         isLoadingUptime={isLoadingUptime}
       />
@@ -266,9 +318,12 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
       {/* Response Time Chart Card */}
       <TargetResponseChartCard
         target={target}
-        timeSeries={timeSeries}
+        timeSeries={chartPoints}
         chartRange={chartRange}
         onRangeChange={setChartRange}
+        isLoading={isLoadingChart}
+        error={chartError}
+        onRetry={() => loadChartHistory(false)}
       />
 
       {/* Real SLA Availability Bar */}
@@ -293,6 +348,8 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
           hasMore={hasMoreHistory}
           isLoadingMore={isLoadingMore}
           onLoadMore={loadMoreHistory}
+          onExportCSV={handleExportResults}
+          isExporting={isExportingResults}
         />
       </div>
 

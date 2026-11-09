@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, RotateCw, AlertCircle } from 'lucide-react';
+import { Clock, RotateCw, AlertCircle, Download } from 'lucide-react';
 import StatusBadge from '../common/StatusBadge';
 
 /**
@@ -13,7 +13,9 @@ export default function RecentProbesTable({
   onRetry = null,
   hasMore = false,
   isLoadingMore = false,
-  onLoadMore = null
+  onLoadMore = null,
+  onExportCSV = null,
+  isExporting = false
 }) {
   return (
     <div className="lg:col-span-2 telemetry-card flex flex-col">
@@ -24,9 +26,22 @@ export default function RecentProbesTable({
             Recent Probe Cycles
           </h2>
         </div>
-        <span className="text-[11px] text-[var(--text-muted)] font-mono">
-          {isLoading ? 'Connecting...' : `Showing ${checkLogs.length} Cycles`}
-        </span>
+        <div className="flex items-center gap-3">
+          {onExportCSV && (
+            <button
+              onClick={onExportCSV}
+              disabled={isExporting}
+              className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 font-mono transition"
+              title="Download historical probe results CSV for this target"
+            >
+              <Download className={`w-3 h-3 ${isExporting ? 'animate-bounce' : ''}`} />
+              <span>{isExporting ? 'Exporting...' : 'Export Results CSV'}</span>
+            </button>
+          )}
+          <span className="text-[11px] text-[var(--text-muted)] font-mono">
+            {isLoading ? 'Connecting...' : `Showing ${checkLogs.length} Cycles`}
+          </span>
+        </div>
       </div>
 
       <div className="table-container flex-1">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertCircle, RotateCw } from 'lucide-react';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import DashboardKPIs from '../components/dashboard/DashboardKPIs';
@@ -8,11 +8,11 @@ import TargetHealthSnapshot from '../components/dashboard/TargetHealthSnapshot';
 import RecentIncidentsSnapshot from '../components/dashboard/RecentIncidentsSnapshot';
 import EventDetailDrawer from '../components/EventDetailDrawer';
 import TargetDrawer from '../components/TargetDrawer';
-import { generateResponseHistory } from '../data/mockData';
+import { getMonitoringHistory } from '../services/historyService';
 
 /**
  * Dashboard Page
- * High-level network health overview combining real-time KPIs, response time curves,
+ * High-level network health overview combining real-time KPIs, real historical response time curves,
  * availability metrics, target summaries, and incident auditing.
  */
 export default function Dashboard({ 
@@ -29,28 +29,97 @@ export default function Dashboard({
   const [isEventDrawerOpen, setIsEventDrawerOpen] = useState(false);
   const [isTargetDrawerOpen, setIsTargetDrawerOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Response Time Chart State
+  const [selectedTargetId, setSelectedTargetId] = useState(null);
   const [chartTimeRange, setChartTimeRange] = useState('24h');
+  const [chartPoints, setChartPoints] = useState([]);
+  const [chartMetrics, setChartMetrics] = useState({ avgLatency: null, minLatency: null, maxLatency: null });
+  const [isLoadingChart, setIsLoadingChart] = useState(true);
+  const [chartError, setChartError] = useState(null);
 
-  // Average latency of online targets
-  const onlineTargets = targets.filter(t => t.latency !== null && t.current_status === 'online');
-  const avgLatency = onlineTargets.length > 0 
-    ? Math.round(onlineTargets.reduce((acc, t) => acc + t.latency, 0) / onlineTargets.length)
-    : 0;
+  // Active target calculation
+  const activeTargetId = selectedTargetId || (targets.length > 0 ? targets[0].id : null);
+  const activeTarget = targets.find(t => t.id === Number(activeTargetId)) || targets[0] || null;
 
-  // Chart data points for response time history
-  const chartPoints = useMemo(() => {
-    return generateResponseHistory(1, 32);
-  }, []);
+  // In-flight guard to prevent duplicate concurrent chart fetches
+  const inFlightChartPromiseRef = useRef(null);
 
+  // Fetch real monitoring history for the active target and time range
+  const fetchChartHistory = useCallback(async (silent = false) => {
+    if (!activeTargetId) {
+      setChartPoints([]);
+      setChartMetrics({ avgLatency: null, minLatency: null, maxLatency: null });
+      setIsLoadingChart(false);
+      return;
+    }
+
+    if (inFlightChartPromiseRef.current) {
+      return inFlightChartPromiseRef.current;
+    }
+
+    if (!silent) {
+      setIsLoadingChart(true);
+      setChartError(null);
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        const result = await getMonitoringHistory(activeTargetId, {
+          range: chartTimeRange,
+          limit: 100
+        });
+        setChartPoints(result.points);
+        setChartMetrics({
+          avgLatency: result.avgLatency,
+          minLatency: result.minLatency,
+          maxLatency: result.maxLatency
+        });
+        setChartError(null);
+        return result;
+      } catch (err) {
+        console.error('Failed to fetch response time history:', err);
+        const errMsg = err.response?.data?.error?.message 
+          || (err.code === 'ERR_NETWORK' 
+            ? 'Unable to connect to backend API server (http://localhost:5000). Please ensure the backend is running.' 
+            : err.message)
+          || 'Failed to fetch monitoring history';
+        if (!silent) {
+          setChartError(errMsg);
+        }
+        throw err;
+      } finally {
+        if (!silent) {
+          setIsLoadingChart(false);
+        }
+        inFlightChartPromiseRef.current = null;
+      }
+    })();
+
+    inFlightChartPromiseRef.current = fetchPromise;
+    return fetchPromise;
+  }, [activeTargetId, chartTimeRange]);
+
+  // Load history whenever activeTargetId or chartTimeRange changes
+  useEffect(() => {
+    if (activeTargetId) {
+      fetchChartHistory(false).catch(() => {});
+    } else {
+      setIsLoadingChart(false);
+    }
+  }, [activeTargetId, chartTimeRange, fetchChartHistory]);
+
+  // Real dashboard refresh callback for user-triggered refresh button
   const handleRefresh = async () => {
-    if (isRefreshing || isLoadingSummary) return;
+    if (isRefreshing || isLoadingSummary || isLoadingChart) return;
     setIsRefreshing(true);
     try {
-      if (onRefresh) {
-        await onRefresh();
-      }
+      await Promise.allSettled([
+        onRefresh ? onRefresh() : Promise.resolve(),
+        fetchChartHistory(false)
+      ]);
     } catch (err) {
-      console.error('Failed to refresh dashboard summary:', err);
+      console.error('Failed to refresh dashboard:', err);
     } finally {
       setIsRefreshing(false);
     }
@@ -83,7 +152,7 @@ export default function Dashboard({
 
       {/* 1. Header with Status & Action Buttons */}
       <DashboardHeader
-        isRefreshing={isRefreshing || isLoadingSummary}
+        isRefreshing={isRefreshing || isLoadingSummary || isLoadingChart}
         onRefresh={handleRefresh}
         onAddTarget={() => setIsTargetDrawerOpen(true)}
       />
@@ -94,13 +163,22 @@ export default function Dashboard({
         isLoading={isLoadingSummary} 
       />
 
-      {/* 3. Latency History Curve & Fleet Availability */}
+      {/* 3. Real Latency History Curve & Fleet Availability */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <ResponseTimeCard
           points={chartPoints}
-          avgLatency={avgLatency}
+          target={activeTarget}
+          targets={targets}
+          selectedTargetId={activeTargetId}
+          onTargetChange={setSelectedTargetId}
+          avgLatency={chartMetrics.avgLatency}
+          minLatency={chartMetrics.minLatency}
+          maxLatency={chartMetrics.maxLatency}
           timeRange={chartTimeRange}
           onTimeRangeChange={setChartTimeRange}
+          isLoading={isLoadingChart}
+          error={chartError}
+          onRetry={() => fetchChartHistory(false)}
         />
         <NetworkAvailabilityCard 
           summary={summary} 

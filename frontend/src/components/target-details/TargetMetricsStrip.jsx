@@ -62,10 +62,10 @@ export default function TargetMetricsStrip({
           Avg Probe Roundtrip
         </span>
         <div className="text-2xl font-bold font-mono text-[var(--text-primary)] mt-1">
-          {avgLatency} ms
+          {avgLatency !== null && avgLatency !== undefined && avgLatency !== '' ? `${avgLatency} ms` : '—'}
         </div>
         <span className="text-[11px] text-[var(--text-muted)] mt-0.5 block">
-          Min: {minLatency}ms / Max: {maxLatency}ms
+          Min: {minLatency !== null && minLatency !== undefined ? `${minLatency}ms` : '—'} / Max: {maxLatency !== null && maxLatency !== undefined ? `${maxLatency}ms` : '—'}
         </span>
       </div>
 

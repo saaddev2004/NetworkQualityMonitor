@@ -303,6 +303,9 @@ export async function getTargetHistory(targetId, params = {}) {
   return data.map(mapProbeResultFromApi);
 }
 
+// Re-export getMonitoringHistory for unified history query consumption
+export { getMonitoringHistory } from './historyService';
+
 /**
  * Normalizes uptime SLA statistics returned by the backend API
  * 

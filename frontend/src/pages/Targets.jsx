@@ -7,7 +7,7 @@ import TargetSearchBar from '../components/targets/TargetSearchBar';
 import TargetsTable from '../components/targets/TargetsTable';
 import TargetDrawer from '../components/TargetDrawer';
 import ToastNotification from '../components/common/ToastNotification';
-import { exportToCSV } from '../utils/formatters';
+import { exportTargetsReport, exportProbeResultsReport } from '../services/reportService';
 
 /**
  * Targets Inventory Page
@@ -35,6 +35,8 @@ export default function Targets({
   const [checkingId, setCheckingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  const [isExportingTargets, setIsExportingTargets] = useState(false);
+  const [isExportingResults, setIsExportingResults] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
   // Status counts for filter chips
@@ -136,22 +138,34 @@ export default function Targets({
     }
   };
 
-  const handleExportCSV = () => {
-    const headers = ['Target ID', 'Name', 'Address', 'Type', 'Method', 'Status', 'Latency (ms)', '24h Uptime', 'Interval (s)'];
-    const rows = filteredTargets.map(t => [
-      t.id,
-      `"${t.name.replace(/"/g, '""')}"`,
-      `"${t.address.replace(/"/g, '""')}"`,
-      t.target_type,
-      t.check_method,
-      t.current_status,
-      t.latency !== null ? t.latency : 'N/A',
-      t.uptime_percentage,
-      t.check_interval_seconds
-    ]);
+  const handleExportTargets = async () => {
+    if (isExportingTargets || isExportingResults) return;
+    setIsExportingTargets(true);
+    try {
+      const res = await exportTargetsReport();
+      const kb = (res.size / 1024).toFixed(1);
+      showToast(`Exported ${res.filename} (${kb} KB) successfully`);
+    } catch (err) {
+      console.error('Failed to export targets CSV:', err);
+      showToast(err.message || 'Failed to download targets CSV report');
+    } finally {
+      setIsExportingTargets(false);
+    }
+  };
 
-    exportToCSV(`monitored_targets_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
-    showToast('Exported targets CSV report successfully');
+  const handleExportResults = async () => {
+    if (isExportingTargets || isExportingResults) return;
+    setIsExportingResults(true);
+    try {
+      const res = await exportProbeResultsReport();
+      const kb = (res.size / 1024).toFixed(1);
+      showToast(`Exported ${res.filename} (${kb} KB) successfully`);
+    } catch (err) {
+      console.error('Failed to export probe results CSV:', err);
+      showToast(err.message || 'Failed to download probe results CSV report');
+    } finally {
+      setIsExportingResults(false);
+    }
   };
 
   return (
@@ -182,7 +196,10 @@ export default function Targets({
       <TargetsHeader
         filteredCount={filteredTargets.length}
         totalCount={targets.length}
-        onExportCSV={handleExportCSV}
+        onExportTargets={handleExportTargets}
+        onExportResults={handleExportResults}
+        isExportingTargets={isExportingTargets}
+        isExportingResults={isExportingResults}
         onAddTarget={() => {
           setSelectedTarget(null);
           setIsDrawerOpen(true);

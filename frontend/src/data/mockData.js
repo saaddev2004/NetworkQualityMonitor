@@ -1,6 +1,9 @@
 // ============================================================
-// Mock Data for NetPulse — Network Monitoring & Performance Intelligence
-// Frontend Prototype – fully internally consistent sample data
+// Development Fixture & Offline Reference Data for NetPulse
+// NOTE: Preserved strictly for offline unit testing, sandbox prototyping,
+// and design documentation.
+// NOT IMPORTED OR CONSUMED BY ANY PRODUCTION RUNTIME APPLICATION CODE.
+// All production UI components ingest real MySQL & backend REST API telemetry.
 // ============================================================
 
 export const TARGETS = [
