@@ -134,3 +134,98 @@ for (const status of ['online', 'warning', 'critical', 'offline']) {
         }
     });
 }
+
+test('POST /targets/:id/check on non-existent target -> 404 NOT_FOUND', async () => {
+    const originalQuery = pool.query;
+    pool.query = async (sql) => {
+        if (sql.includes('SELECT * FROM monitored_targets WHERE id = ?')) {
+            return [[]];
+        }
+        return [[]];
+    };
+    try {
+        const res = await send('POST', '/targets/999/check');
+        assert.equal(res.status, 404);
+        const json = await res.json();
+        assert.equal(json.error.code, 'NOT_FOUND');
+    } finally {
+        pool.query = originalQuery;
+    }
+});
+
+test('POST /targets/:id/check on disabled target -> 409 TARGET_DISABLED', async () => {
+    const originalQuery = pool.query;
+    pool.query = async (sql) => {
+        if (sql.includes('SELECT * FROM monitored_targets WHERE id = ?')) {
+            return [[{ id: 1, name: 'Paused Target', is_enabled: 0, current_status: 'disabled' }]];
+        }
+        return [[]];
+    };
+    try {
+        const res = await send('POST', '/targets/1/check');
+        assert.equal(res.status, 409);
+        const json = await res.json();
+        assert.equal(json.error.code, 'TARGET_DISABLED');
+    } finally {
+        pool.query = originalQuery;
+    }
+});
+
+test('GET /events returns 200 with joined target info and default pagination', async () => {
+    const originalQuery = pool.query;
+    let capturedSql;
+    let capturedParams;
+    pool.query = async (sql, params) => {
+        capturedSql = sql;
+        capturedParams = params;
+        return [[
+            {
+                id: 101,
+                target_id: 1,
+                event_type: 'packet_loss',
+                severity: 'critical',
+                description: 'Packet loss reached 60%',
+                occurred_at: '2026-11-09T00:00:00.000Z',
+                resolved_at: null,
+                is_resolved: 0,
+                target_name: 'Primary Gateway',
+                target_address: '192.168.1.1'
+            }
+        ]];
+    };
+    try {
+        const res = await send('GET', '/events');
+        assert.equal(res.status, 200);
+        const data = await res.json();
+        assert.equal(data.length, 1);
+        assert.equal(data[0].id, 101);
+        assert.equal(data[0].target_name, 'Primary Gateway');
+        assert.match(capturedSql, /FROM events e/i);
+        assert.match(capturedSql, /LEFT JOIN monitored_targets t ON e\.target_id = t\.id/i);
+        assert.deepEqual(capturedParams, [100, 0]);
+    } finally {
+        pool.query = originalQuery;
+    }
+});
+
+test('GET /events?targetId=1&isResolved=false respects query filters', async () => {
+    const originalQuery = pool.query;
+    let capturedSql;
+    let capturedParams;
+    pool.query = async (sql, params) => {
+        capturedSql = sql;
+        capturedParams = params;
+        return [[]];
+    };
+    try {
+        const res = await send('GET', '/events?targetId=1&isResolved=false');
+        assert.equal(res.status, 200);
+        const data = await res.json();
+        assert.equal(data.length, 0);
+        assert.match(capturedSql, /AND e\.target_id = \?/i);
+        assert.match(capturedSql, /AND e\.is_resolved = \?/i);
+        assert.deepEqual(capturedParams, [1, false, 100, 0]);
+    } finally {
+        pool.query = originalQuery;
+    }
+});

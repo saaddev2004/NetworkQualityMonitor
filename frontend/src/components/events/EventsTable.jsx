@@ -1,11 +1,17 @@
 import React from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, ArrowUpRight } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, ArrowUpRight, RotateCw } from 'lucide-react';
 
 /**
  * EventsTable component
  * Renders chronological audit log of alerts, state changes, SLA breaches, and recovery events
  */
-export default function EventsTable({ events = [], onOpenEvent }) {
+export default function EventsTable({ 
+  events = [], 
+  isLoading = false, 
+  error = null, 
+  onRetry = null, 
+  onOpenEvent 
+}) {
   const renderSeverityBadge = (severity) => {
     if (severity === 'critical') {
       return (
@@ -47,10 +53,42 @@ export default function EventsTable({ events = [], onOpenEvent }) {
             </tr>
           </thead>
           <tbody>
-            {events.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan="7" className="py-14 text-center text-xs text-[var(--text-muted)] font-mono">
+                  <div className="flex flex-col items-center justify-center gap-2.5">
+                    <RotateCw className="w-5 h-5 animate-spin text-[var(--brand-primary)]" />
+                    <span>Connecting to NetPulse telemetry engine & fetching incident events...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan="7" className="py-12 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto text-xs">
+                    <div className="flex items-center gap-2 text-[var(--status-critical)] font-semibold">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Incident Events Synchronization Failed</span>
+                    </div>
+                    <p className="text-[var(--text-muted)] text-[11px] font-mono leading-relaxed">
+                      {error}
+                    </p>
+                    {onRetry && (
+                      <button
+                        onClick={onRetry}
+                        className="btn-telemetry btn-secondary mt-2 inline-flex items-center gap-1.5 text-xs"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Retry Fetching Events</span>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : events.length === 0 ? (
               <tr>
                 <td colSpan="7" className="py-12 text-center text-xs text-[var(--text-muted)]">
-                  No incident events match your active filters.
+                  No incident events match your active filters or recorded yet.
                 </td>
               </tr>
             ) : (

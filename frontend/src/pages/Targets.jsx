@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertCircle, RotateCw } from 'lucide-react';
 import TargetsHeader from '../components/targets/TargetsHeader';
 import TargetStatusFilters from '../components/targets/TargetStatusFilters';
 import TargetSearchBar from '../components/targets/TargetSearchBar';
@@ -14,7 +15,10 @@ import { exportToCSV } from '../utils/formatters';
  * CSV reporting, manual health probing, and provisioning configuration.
  */
 export default function Targets({ 
-  targets = [], 
+  targets = [],
+  isLoading = false,
+  error = null,
+  onRetry = null,
   onAddTarget, 
   onUpdateTarget, 
   onDeleteTarget,
@@ -29,6 +33,8 @@ export default function Targets({
   const [selectedTarget, setSelectedTarget] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [checkingId, setCheckingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
   // Status counts for filter chips
@@ -71,20 +77,41 @@ export default function Targets({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleManualCheck = (e, target) => {
+  const handleManualCheck = async (e, target) => {
     e.stopPropagation();
-    setCheckingId(target.id);
-    setTimeout(() => {
-      onManualCheck(target.id);
+    if (checkingId === target.id) return;
+    if (!target.is_enabled) {
+      showToast(`Cannot check paused target "${target.name}". Enable it first.`);
+      return;
+    }
+
+    try {
+      setCheckingId(target.id);
+      const outcome = await onManualCheck(target.id);
+      const latencyText = outcome?.result?.responseTimeMs !== null && outcome?.result?.responseTimeMs !== undefined
+        ? ` (${outcome.result.responseTimeMs} ms)`
+        : '';
+      showToast(`Probe completed for ${target.name}: ${outcome?.status || 'done'}${latencyText}`);
+    } catch (err) {
+      showToast(err.message || `Manual probe failed for ${target.name}`);
+    } finally {
       setCheckingId(null);
-      showToast(`Manual probe cycle completed for ${target.name}`);
-    }, 600);
+    }
   };
 
-  const handleToggle = (e, target) => {
+  const handleToggle = async (e, target) => {
     e.stopPropagation();
-    onToggleTarget(target.id);
-    showToast(`Target ${target.name} ${target.is_enabled ? 'paused' : 'activated'}`);
+    if (togglingId) return;
+    const nextState = !target.is_enabled;
+    try {
+      setTogglingId(target.id);
+      await onToggleTarget(target.id, nextState);
+      showToast(`Target ${target.name} ${nextState ? 'resumed' : 'paused'}`);
+    } catch (err) {
+      showToast(err.message || `Failed to update ${target.name}`);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleEdit = (e, target) => {
@@ -93,11 +120,19 @@ export default function Targets({
     setIsDrawerOpen(true);
   };
 
-  const handleDelete = (e, target) => {
+  const handleDelete = async (e, target) => {
     e.stopPropagation();
+    if (deletingId) return;
     if (window.confirm(`Are you sure you want to delete ${target.name}? This will remove all historical telemetry.`)) {
-      onDeleteTarget(target.id);
-      showToast(`Target ${target.name} removed from inventory`);
+      try {
+        setDeletingId(target.id);
+        await onDeleteTarget(target.id);
+        showToast(`Target ${target.name} removed from inventory`);
+      } catch (err) {
+        showToast(err.message || `Failed to delete ${target.name}`);
+      } finally {
+        setDeletingId(null);
+      }
     }
   };
 
@@ -123,6 +158,25 @@ export default function Targets({
     <div className="content-body">
       {/* Toast Feedback */}
       <ToastNotification message={toastMessage} />
+
+      {/* API Error Banner if connection fails */}
+      {error && (
+        <div className="p-3.5 rounded-lg border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span><strong>Backend Connection Error:</strong> {error}</span>
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="btn-telemetry btn-secondary text-xs self-start sm:self-auto flex items-center gap-1.5"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              <span>Retry</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Page Header */}
       <TargetsHeader
@@ -155,7 +209,12 @@ export default function Targets({
       {/* Targets Table */}
       <TargetsTable
         targets={filteredTargets}
+        isLoading={isLoading}
+        error={error}
+        onRetry={onRetry}
         checkingId={checkingId}
+        deletingId={deletingId}
+        togglingId={togglingId}
         onRowClick={(id) => navigate(`/targets/${id}`)}
         onManualCheck={handleManualCheck}
         onToggle={handleToggle}
@@ -171,13 +230,13 @@ export default function Targets({
           setSelectedTarget(null);
         }}
         target={selectedTarget}
-        onSave={(data) => {
+        onSave={async (data) => {
           if (selectedTarget) {
-            onUpdateTarget({ ...selectedTarget, ...data });
+            await onUpdateTarget({ ...selectedTarget, ...data });
             showToast(`Target ${data.name} updated successfully`);
           } else {
-            onAddTarget(data);
-            showToast(`Target ${data.name} created and active`);
+            await onAddTarget(data);
+            showToast(`Target ${data.name} created successfully`);
           }
         }}
       />

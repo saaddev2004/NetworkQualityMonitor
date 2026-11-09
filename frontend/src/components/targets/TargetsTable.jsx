@@ -1,15 +1,20 @@
 import React from 'react';
-import { Globe, Server, Cpu, Play, Power, Edit3, Trash2 } from 'lucide-react';
+import { Globe, Server, Cpu, Play, Power, Edit3, Trash2, RotateCw, AlertCircle } from 'lucide-react';
 import StatusBadge from '../common/StatusBadge';
 import Sparkline from '../common/Sparkline';
 
 /**
  * TargetsTable component
- * Renders inventory table with probe metrics, uptime conformance, sparklines, and row actions
+ * Renders inventory table with probe metrics, uptime conformance, sparklines, loading states, and row actions
  */
 export default function TargetsTable({
   targets = [],
+  isLoading = false,
+  error = null,
+  onRetry = null,
   checkingId = null,
+  deletingId = null,
+  togglingId = null,
   onRowClick,
   onManualCheck,
   onToggle,
@@ -33,7 +38,39 @@ export default function TargetsTable({
             </tr>
           </thead>
           <tbody>
-            {targets.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan="8" className="py-14 text-center text-xs text-[var(--text-muted)] font-mono">
+                  <div className="flex flex-col items-center justify-center gap-2.5">
+                    <RotateCw className="w-5 h-5 animate-spin text-[var(--brand-primary)]" />
+                    <span>Connecting to NetPulse telemetry engine & fetching monitored targets...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan="8" className="py-12 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto text-xs">
+                    <div className="flex items-center gap-2 text-[var(--status-critical)] font-semibold">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Target Synchronization Failed</span>
+                    </div>
+                    <p className="text-[var(--text-muted)] text-[11px] font-mono leading-relaxed">
+                      {error}
+                    </p>
+                    {onRetry && (
+                      <button
+                        onClick={onRetry}
+                        className="btn-telemetry btn-secondary mt-2 inline-flex items-center gap-1.5 text-xs"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Retry Fetching Targets</span>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : targets.length === 0 ? (
               <tr>
                 <td colSpan="8" className="py-12 text-center text-xs text-[var(--text-muted)]">
                   No monitored targets match your current search and filter criteria.
@@ -42,6 +79,14 @@ export default function TargetsTable({
             ) : (
               targets.map((target) => {
                 const isChecking = checkingId === target.id;
+                const uptimeNum = parseFloat(target.uptime_percentage);
+                const uptimeColor = isNaN(uptimeNum)
+                  ? 'var(--text-muted)'
+                  : uptimeNum >= 99
+                    ? 'var(--status-online)'
+                    : uptimeNum >= 95
+                      ? 'var(--status-warning)'
+                      : 'var(--status-critical)';
 
                 return (
                   <tr
@@ -88,11 +133,8 @@ export default function TargetsTable({
                     </td>
 
                     <td>
-                      <span className="font-mono font-medium text-xs" style={{
-                        color: parseFloat(target.uptime_percentage) >= 99 ? 'var(--status-online)' :
-                               parseFloat(target.uptime_percentage) >= 95 ? 'var(--status-warning)' : 'var(--status-critical)'
-                      }}>
-                        {target.uptime_percentage}
+                      <span className="font-mono font-medium text-xs" style={{ color: uptimeColor }}>
+                        {target.uptime_percentage || '—'}
                       </span>
                     </td>
 
@@ -124,11 +166,12 @@ export default function TargetsTable({
                         {/* Pause / Resume Button */}
                         <button
                           onClick={(e) => onToggle(e, target)}
+                          disabled={togglingId === target.id}
                           className={`btn-telemetry btn-icon btn-secondary ${!target.is_enabled ? 'text-[var(--status-warning)]' : ''}`}
                           title={target.is_enabled ? 'Pause monitoring' : 'Resume monitoring'}
                           aria-label={target.is_enabled ? 'Pause' : 'Resume'}
                         >
-                          <Power className="w-3.5 h-3.5" />
+                          <Power className={`w-3.5 h-3.5 ${togglingId === target.id ? 'animate-spin text-[var(--brand-primary)]' : ''}`} />
                         </button>
 
                         {/* Edit Button */}
@@ -144,11 +187,12 @@ export default function TargetsTable({
                         {/* Delete Button */}
                         <button
                           onClick={(e) => onDelete(e, target)}
+                          disabled={deletingId === target.id}
                           className="btn-telemetry btn-icon btn-danger"
                           title="Delete monitored target"
                           aria-label="Delete target"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className={`w-3.5 h-3.5 ${deletingId === target.id ? 'opacity-50 animate-pulse' : ''}`} />
                         </button>
                       </div>
                     </td>

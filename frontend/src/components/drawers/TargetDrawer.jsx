@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Server, Globe, Cpu, Check } from 'lucide-react';
+import { X, Server, Globe, Cpu, Check, AlertCircle } from 'lucide-react';
 import TargetIdentityFields from '../forms/TargetIdentityFields';
 import TargetScheduleFields from '../forms/TargetScheduleFields';
 import TargetThresholdFields from '../forms/TargetThresholdFields';
@@ -22,6 +22,8 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (target) {
@@ -50,6 +52,8 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
       });
     }
     setErrors({});
+    setFormError(null);
+    setIsSubmitting(false);
   }, [target, isOpen]);
 
   if (!isOpen) return null;
@@ -77,24 +81,63 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
 
   const handleFieldChange = (updates) => {
     setFormData(prev => ({ ...prev, ...updates }));
+    // Clear field-level error when user modifies that field
+    const keys = Object.keys(updates);
+    if (keys.some(k => errors[k])) {
+      setErrors(prev => {
+        const next = { ...prev };
+        keys.forEach(k => delete next[k]);
+        return next;
+      });
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
-    onSave({
-      name: formData.name.trim(),
-      target_type: formData.target_type,
-      address: formData.address.trim(),
-      check_method: formData.check_method,
-      check_interval_seconds: Number(formData.check_interval_seconds),
-      warning_threshold_ms: Number(formData.warning_threshold_ms),
-      critical_threshold_ms: Number(formData.critical_threshold_ms),
-      timeout_seconds: Number(formData.timeout_seconds),
-      is_enabled: formData.is_enabled
-    });
-    onClose();
+    try {
+      setIsSubmitting(true);
+      setFormError(null);
+
+      await onSave({
+        name: formData.name.trim(),
+        target_type: formData.target_type,
+        address: formData.address.trim(),
+        check_method: formData.check_method,
+        check_interval_seconds: Number(formData.check_interval_seconds),
+        warning_threshold_ms: Number(formData.warning_threshold_ms),
+        critical_threshold_ms: Number(formData.critical_threshold_ms),
+        timeout_seconds: Number(formData.timeout_seconds),
+        is_enabled: formData.is_enabled
+      });
+
+      onClose();
+    } catch (err) {
+      console.error('Target form submit error:', err);
+      // Map server validation details if present
+      if (err.details && Array.isArray(err.details)) {
+        const fieldMap = {
+          name: 'name',
+          targetType: 'target_type',
+          address: 'address',
+          checkMethod: 'check_method',
+          checkIntervalSeconds: 'check_interval_seconds',
+          warningThresholdMs: 'warning_threshold_ms',
+          criticalThresholdMs: 'critical_threshold_ms',
+          timeoutSeconds: 'timeout_seconds'
+        };
+        const fieldErrors = {};
+        err.details.forEach(issue => {
+          const fieldKey = fieldMap[issue.path?.[0]] || issue.path?.[0];
+          if (fieldKey) fieldErrors[fieldKey] = issue.message;
+        });
+        setErrors(prev => ({ ...prev, ...fieldErrors }));
+      }
+      setFormError(err.message || 'Failed to save target. Please verify inputs and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -128,6 +171,15 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
 
         <form onSubmit={handleSubmit} className="drawer-body flex flex-col justify-between">
           <div className="space-y-5">
+            {formError && (
+              <div className="p-3 rounded-lg border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical)] text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <strong className="font-semibold">{target ? 'Update Failed:' : 'Request Failed:'}</strong> {formError}
+                </div>
+              </div>
+            )}
+
             <TargetIdentityFields
               formData={formData}
               errors={errors}
@@ -151,16 +203,27 @@ export default function TargetDrawer({ isOpen, onClose, target, onSave }) {
             <button
               type="button"
               onClick={onClose}
+              disabled={isSubmitting}
               className="btn-telemetry btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
+              disabled={isSubmitting}
               className="btn-telemetry btn-primary"
             >
-              <Check className="w-3.5 h-3.5" />
-              <span>{target ? 'Save Changes' : 'Create Monitored Target'}</span>
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  <span>{target ? 'Saving Changes...' : 'Creating...'}</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{target ? 'Save Changes' : 'Create Monitored Target'}</span>
+                </>
+              )}
             </button>
           </div>
         </form>

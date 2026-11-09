@@ -16,7 +16,7 @@ import { generateTimeSeries, CHECK_HISTORY, generateAvailabilityHistory } from '
  * Deep-dive diagnostic page providing telemetry waveforms, 30-day availability blocks,
  * configuration audit, and probe history log for a single endpoint.
  */
-export default function TargetDetails({ targets = [], events = [], onUpdateTarget, onManualCheck }) {
+export default function TargetDetails({ targets = [], events = [], onUpdateTarget, onDeleteTarget, onToggleTarget, onManualCheck }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const targetId = parseInt(id, 10);
@@ -68,13 +68,25 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleManualCheck = () => {
-    setIsChecking(true);
-    setTimeout(() => {
-      onManualCheck(target.id);
+  const handleManualCheck = async () => {
+    if (isChecking) return;
+    if (!target.is_enabled) {
+      showToast(`Cannot check paused target "${target.name}". Enable it first.`);
+      return;
+    }
+
+    try {
+      setIsChecking(true);
+      const outcome = await onManualCheck(target.id);
+      const latencyText = outcome?.result?.responseTimeMs !== null && outcome?.result?.responseTimeMs !== undefined
+        ? ` (${outcome.result.responseTimeMs} ms)`
+        : '';
+      showToast(`Probe completed for ${target.name}: ${outcome?.status || 'done'}${latencyText}`);
+    } catch (err) {
+      showToast(err.message || `Manual probe failed for ${target.name}`);
+    } finally {
       setIsChecking(false);
-      showToast(`Manual probe cycle completed for ${target.name}`);
-    }, 600);
+    }
   };
 
   const validPoints = timeSeries.map(p => p.latency).filter(v => v !== null && v !== undefined);
@@ -132,8 +144,8 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         target={target}
-        onSave={(updated) => {
-          onUpdateTarget({ ...target, ...updated });
+        onSave={async (updated) => {
+          await onUpdateTarget({ ...target, ...updated });
           showToast(`Target configuration saved for ${target.name}`);
         }}
       />

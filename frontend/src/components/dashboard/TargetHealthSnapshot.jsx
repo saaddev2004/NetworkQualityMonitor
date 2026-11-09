@@ -42,48 +42,56 @@ export default function TargetHealthSnapshot({ targets = [] }) {
             </tr>
           </thead>
           <tbody>
-            {targets.slice(0, 6).map((target) => (
-              <tr
-                key={target.id}
-                className="clickable-row"
-                onClick={() => navigate(`/targets/${target.id}`)}
-              >
-                <td>
-                  <div className="font-semibold text-[var(--text-primary)]">{target.name}</div>
-                  <div className="font-mono text-[11px] text-[var(--text-muted)] truncate max-w-[220px]">
-                    {target.address}
-                  </div>
-                </td>
-                <td>
-                  <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                    {target.check_method}
-                  </span>
-                </td>
-                <td>
-                  <StatusBadge status={target.current_status} isEnabled={target.is_enabled} />
-                </td>
-                <td>
-                  {target.latency !== null && target.latency !== undefined ? (
-                    <span className="font-mono font-medium text-[var(--text-primary)]">
-                      {target.latency} ms
+            {targets.slice(0, 6).map((target) => {
+              const uptimeNum = parseFloat(target.uptime_percentage);
+              const uptimeColor = isNaN(uptimeNum)
+                ? 'var(--text-muted)'
+                : uptimeNum >= 99
+                  ? 'var(--status-online)'
+                  : uptimeNum >= 95
+                    ? 'var(--status-warning)'
+                    : 'var(--status-critical)';
+
+              return (
+                <tr
+                  key={target.id}
+                  className="clickable-row"
+                  onClick={() => navigate(`/targets/${target.id}`)}
+                >
+                  <td>
+                    <div className="font-semibold text-[var(--text-primary)]">{target.name}</div>
+                    <div className="font-mono text-[11px] text-[var(--text-muted)] truncate max-w-[220px]">
+                      {target.address}
+                    </div>
+                  </td>
+                  <td>
+                    <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                      {target.check_method}
                     </span>
-                  ) : (
-                    <span className="font-mono text-[var(--text-muted)]">—</span>
-                  )}
-                </td>
-                <td>
-                  <span className="font-mono font-medium" style={{
-                    color: parseFloat(target.uptime_percentage) >= 99 ? 'var(--status-online)' :
-                           parseFloat(target.uptime_percentage) >= 95 ? 'var(--status-warning)' : 'var(--status-critical)'
-                  }}>
-                    {target.uptime_percentage}
-                  </span>
-                </td>
-                <td>
-                  <Sparkline data={target.history_sparkline} status={target.current_status} width={75} height={20} />
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td>
+                    <StatusBadge status={target.current_status} isEnabled={target.is_enabled} />
+                  </td>
+                  <td>
+                    {target.latency !== null && target.latency !== undefined ? (
+                      <span className="font-mono font-medium text-[var(--text-primary)]">
+                        {target.latency} ms
+                      </span>
+                    ) : (
+                      <span className="font-mono text-[var(--text-muted)]">—</span>
+                    )}
+                  </td>
+                  <td>
+                    <span className="font-mono font-medium" style={{ color: uptimeColor }}>
+                      {target.uptime_percentage || '—'}
+                    </span>
+                  </td>
+                  <td>
+                    <Sparkline data={target.history_sparkline} status={target.current_status} width={75} height={20} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
