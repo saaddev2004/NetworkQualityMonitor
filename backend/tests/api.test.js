@@ -75,6 +75,18 @@ test('health returns 503 (not a crash) when the DB is unreachable', async () => 
     }
 });
 
+test('health returns 200 with engine telemetry and database status', async () => {
+    const res = await send('GET', '/health');
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.status, 'ok');
+    assert.equal(body.database.status, 'connected');
+    assert.ok(body.engine);
+    assert.ok(typeof body.engine.activeJobsCount === 'number');
+    assert.ok(typeof body.engine.status === 'string');
+    assert.ok(body.system);
+});
+
 test('GET /targets with invalid status -> 400 INVALID_STATUS', async () => {
     const res = await send('GET', '/targets?status=invalid');
     assert.equal(res.status, 400);

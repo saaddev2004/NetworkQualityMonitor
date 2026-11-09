@@ -6,6 +6,18 @@ import { checkAndRecord } from '../services/checkRunner.js';
 // so every public function converts with Number()).
 const activeJobs = new Map();
 let retentionJob = null;
+let schedulerState = 'stopped'; // 'stopped' | 'initializing' | 'running' | 'error'
+
+export const getSchedulerStatus = () => {
+    const isRunning = schedulerState === 'running' || activeJobs.size > 0;
+    return {
+        isRunning,
+        status: isRunning ? 'running' : schedulerState,
+        activeJobsCount: activeJobs.size,
+        scheduledTargetIds: [...activeJobs.keys()],
+        retentionJobActive: Boolean(retentionJob)
+    };
+};
 
 export const unscheduleTarget = (id) => {
     const key = Number(id);
@@ -49,11 +61,14 @@ export const scheduleTarget = (target) => {
 
 // Server start: load every enabled target.
 export const initScheduler = async () => {
+    schedulerState = 'initializing';
     try {
         const [targets] = await pool.query('SELECT * FROM monitored_targets WHERE is_enabled = true');
         targets.forEach(scheduleTarget);
+        schedulerState = 'running';
         console.log(`[Scheduler] Started automated monitoring for ${targets.length} active targets.`);
     } catch (error) {
+        schedulerState = 'error';
         console.error('[Scheduler] Initialization failed:', error.message);
     }
 
@@ -86,4 +101,5 @@ export const stopAllJobs = () => {
         retentionJob.stop();
         retentionJob = null;
     }
+    schedulerState = 'stopped';
 };

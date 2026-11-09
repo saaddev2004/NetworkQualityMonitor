@@ -4,6 +4,7 @@ import {
   Activity, 
   Server, 
   AlertTriangle, 
+  Settings,
   Sun, 
   Moon,
   X 
@@ -39,6 +40,11 @@ export default function Sidebar({
       icon: AlertTriangle,
       badge: activeAlertsCount,
       badgeStyle: 'text-[var(--status-critical)] bg-[var(--status-critical-bg)] border-[var(--status-critical-border)]'
+    },
+    {
+      to: '/settings',
+      label: 'Settings',
+      icon: Settings
     }
   ];
 

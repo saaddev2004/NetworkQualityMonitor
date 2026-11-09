@@ -6,9 +6,11 @@ import Dashboard from './pages/Dashboard';
 import Targets from './pages/Targets';
 import TargetDetails from './pages/TargetDetails';
 import Events from './pages/Events';
+import Settings from './pages/Settings';
 import { getEvents } from './services/eventService';
 import { getTargets, createTarget, updateTarget, deleteTarget, toggleTarget, checkTarget } from './services/targetService';
 import { getDashboardSummary } from './services/dashboardService';
+import { getSystemHealth } from './services/systemService';
 import './index.css';
 
 /**
@@ -26,6 +28,12 @@ export default function App() {
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [summaryError, setSummaryError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Live system health and engine scheduler telemetry state
+  const [healthData, setHealthData] = useState(null);
+  const [isLoadingHealth, setIsLoadingHealth] = useState(true);
+  const [healthError, setHealthError] = useState(null);
+  const [lastHealthSync, setLastHealthSync] = useState(null);
 
   // Theme State management (Dark mode by default, toggleable to light)
   const [theme, setTheme] = useState(() => {
@@ -126,25 +134,77 @@ export default function App() {
     return summaryPromise;
   }, []);
 
-  // Fetch targets, events, and summary on initial mount
+  const inFlightHealthPromiseRef = useRef(null);
+
+  // Fetch system health and engine scheduler status (GET /api/v1/health)
+  const fetchSystemHealth = useCallback(async (silent = false) => {
+    if (inFlightHealthPromiseRef.current) {
+      return inFlightHealthPromiseRef.current;
+    }
+
+    if (!silent) {
+      setIsLoadingHealth(true);
+      setHealthError(null);
+    }
+
+    const healthPromise = (async () => {
+      try {
+        const data = await getSystemHealth();
+        setHealthData(data);
+        setLastHealthSync(new Date());
+        setHealthError(null);
+        return data;
+      } catch (err) {
+        console.error('Failed to fetch system telemetry:', err);
+        const errMsg = err.response?.data?.error?.message 
+          || (err.code === 'ERR_NETWORK' 
+            ? 'Unable to connect to backend API server (http://localhost:5000). Please ensure the backend is running.' 
+            : err.message)
+          || 'Failed to fetch engine telemetry';
+        if (!silent) {
+          setHealthError(errMsg);
+        }
+        throw err;
+      } finally {
+        if (!silent) {
+          setIsLoadingHealth(false);
+        }
+        inFlightHealthPromiseRef.current = null;
+      }
+    })();
+
+    inFlightHealthPromiseRef.current = healthPromise;
+    return healthPromise;
+  }, []);
+
+  // Fetch targets, events, summary, and engine health on initial mount
   useEffect(() => {
     fetchTargets();
     fetchEvents();
     fetchDashboardSummary();
-  }, [fetchTargets, fetchEvents, fetchDashboardSummary]);
+    fetchSystemHealth();
+
+    // Periodic freshness check every 30s to keep engine status up to date
+    const telemetryInterval = setInterval(() => {
+      fetchSystemHealth(true).catch(() => {});
+    }, 30000);
+
+    return () => clearInterval(telemetryInterval);
+  }, [fetchTargets, fetchEvents, fetchDashboardSummary, fetchSystemHealth]);
 
   // Real dashboard refresh callback for user-triggered refresh button
   const handleRefreshDashboard = useCallback(async () => {
     const results = await Promise.allSettled([
       fetchDashboardSummary(false),
       fetchTargets(),
-      fetchEvents()
+      fetchEvents(),
+      fetchSystemHealth(true)
     ]);
     const summaryRes = results[0];
     if (summaryRes.status === 'rejected') {
       throw summaryRes.reason;
     }
-  }, [fetchDashboardSummary, fetchTargets, fetchEvents]);
+  }, [fetchDashboardSummary, fetchTargets, fetchEvents, fetchSystemHealth]);
 
   // Add target handler (POST /api/v1/targets)
   const handleAddTarget = async (newTargetData) => {
@@ -153,6 +213,7 @@ export default function App() {
       setTargets(prev => [created, ...prev]);
       // Silently refresh dashboard summary to update KPI metrics
       fetchDashboardSummary(true).catch(e => console.error('Dashboard summary refresh error:', e));
+      fetchSystemHealth(true).catch(e => console.error('System health refresh error:', e));
       return created;
     } catch (err) {
       console.error('Failed to create target via API:', err);
@@ -208,6 +269,7 @@ export default function App() {
       setTargets(prev => prev.filter(t => t.id !== Number(targetId)));
       // Silently refresh dashboard summary
       fetchDashboardSummary(true).catch(e => console.error('Dashboard summary refresh error:', e));
+      fetchSystemHealth(true).catch(e => console.error('System health refresh error:', e));
       return true;
     } catch (err) {
       console.error('Failed to delete target via API:', err);
@@ -252,6 +314,7 @@ export default function App() {
 
       // Silently refresh dashboard summary
       fetchDashboardSummary(true).catch(e => console.error('Dashboard summary refresh error:', e));
+      fetchSystemHealth(true).catch(e => console.error('System health refresh error:', e));
 
       return result;
     } catch (err) {
@@ -349,8 +412,13 @@ export default function App() {
         <main className="app-content">
           {/* Top Telemetry Global Header */}
           <TopTelemetryBar
-            probesCount={dashboardSummary?.totalTargets ?? (isLoadingSummary ? '...' : 0)}
-            isEngineOnline={!targetsError}
+            engineStatus={
+              healthError 
+                ? 'offline' 
+                : (healthData?.engine?.status || (isLoadingHealth ? 'loading' : 'offline'))
+            }
+            activeProbesCount={healthData?.engine?.activeJobsCount ?? null}
+            configuredTargetsCount={dashboardSummary?.totalTargets ?? targets.length}
             theme={theme}
             onToggleTheme={toggleTheme}
             onOpenMobileSidebar={() => setSidebarOpen(true)}
@@ -370,6 +438,13 @@ export default function App() {
             isLoadingSummary={isLoadingSummary}
             summaryError={summaryError}
             onRefreshDashboard={handleRefreshDashboard}
+            healthData={healthData}
+            isLoadingHealth={isLoadingHealth}
+            healthError={healthError}
+            onRefreshHealth={() => fetchSystemHealth(false)}
+            lastHealthSync={lastHealthSync}
+            theme={theme}
+            onToggleTheme={toggleTheme}
             onAddTarget={handleAddTarget}
             onUpdateTarget={handleUpdateTarget}
             onDeleteTarget={handleDeleteTarget}
@@ -399,6 +474,13 @@ function AnimatedRoutes({
   isLoadingSummary,
   summaryError,
   onRefreshDashboard,
+  healthData,
+  isLoadingHealth,
+  healthError,
+  onRefreshHealth,
+  lastHealthSync,
+  theme,
+  onToggleTheme,
   onAddTarget, 
   onUpdateTarget, 
   onDeleteTarget, 
@@ -462,6 +544,20 @@ function AnimatedRoutes({
               isLoading={isLoadingEvents}
               error={eventsError}
               onRetry={onRetryEvents}
+            />
+          } 
+        />
+        <Route 
+          path="/settings" 
+          element={
+            <Settings 
+              healthData={healthData}
+              isLoadingHealth={isLoadingHealth}
+              healthError={healthError}
+              onRefreshHealth={onRefreshHealth}
+              lastSynchronized={lastHealthSync}
+              theme={theme}
+              onToggleTheme={onToggleTheme}
             />
           } 
         />

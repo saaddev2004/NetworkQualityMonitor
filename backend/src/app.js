@@ -5,6 +5,7 @@ import pool from './config/db.js';
 import targetRoutes from './routes/targetRoutes.js';
 import { getDashboardSummary } from './controllers/dashboardController.js';
 import { getEvents } from './controllers/eventController.js';
+import { getSchedulerStatus } from './scheduler/scheduler.js';
 
 // The Express app, without app.listen(), so tests can import it.
 const app = express();
@@ -12,14 +13,33 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health Check API
+// Health & Engine Telemetry Check API
 app.get('/api/v1/health', async (req, res) => {
     try {
         await pool.query('SELECT 1');
+        const scheduler = getSchedulerStatus();
         res.status(200).json({
             status: 'ok',
             message: 'Application and Database are healthy',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            database: {
+                status: 'connected',
+                name: process.env.DB_NAME || 'network_monitor_db'
+            },
+            engine: {
+                status: scheduler.status,
+                isRunning: scheduler.isRunning,
+                activeJobsCount: scheduler.activeJobsCount,
+                scheduledTargetIds: scheduler.scheduledTargetIds,
+                retentionJob: scheduler.retentionJobActive ? 'active' : 'inactive',
+                retentionDays: Number(process.env.RESULT_RETENTION_DAYS) || 30,
+                uptimeSeconds: Math.floor(process.uptime())
+            },
+            system: {
+                nodeVersion: process.version,
+                platform: process.platform,
+                environment: process.env.NODE_ENV || 'development'
+            }
         });
     } catch (error) {
         console.error('Database connection error:', error.message);
