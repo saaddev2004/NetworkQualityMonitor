@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { AlertCircle, RotateCw } from 'lucide-react';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import DashboardKPIs from '../components/dashboard/DashboardKPIs';
 import ResponseTimeCard from '../components/dashboard/ResponseTimeCard';
@@ -14,7 +15,16 @@ import { generateResponseHistory } from '../data/mockData';
  * High-level network health overview combining real-time KPIs, response time curves,
  * availability metrics, target summaries, and incident auditing.
  */
-export default function Dashboard({ targets = [], events = [], onAddTarget, onUpdateTarget }) {
+export default function Dashboard({ 
+  targets = [], 
+  events = [], 
+  summary = null,
+  isLoadingSummary = false,
+  summaryError = null,
+  onRefresh = null,
+  onAddTarget, 
+  onUpdateTarget 
+}) {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isEventDrawerOpen, setIsEventDrawerOpen] = useState(false);
   const [isTargetDrawerOpen, setIsTargetDrawerOpen] = useState(false);
@@ -32,11 +42,18 @@ export default function Dashboard({ targets = [], events = [], onAddTarget, onUp
     return generateResponseHistory(1, 32);
   }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    if (isRefreshing || isLoadingSummary) return;
     setIsRefreshing(true);
-    setTimeout(() => {
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (err) {
+      console.error('Failed to refresh dashboard summary:', err);
+    } finally {
       setIsRefreshing(false);
-    }, 600);
+    }
   };
 
   const handleOpenEvent = (event) => {
@@ -46,15 +63,36 @@ export default function Dashboard({ targets = [], events = [], onAddTarget, onUp
 
   return (
     <div className="content-body">
+      {/* API Error Banner if summary connection fails or refresh fails */}
+      {summaryError && (
+        <div className="p-3.5 rounded-lg border border-[var(--status-critical-border)] bg-[var(--status-critical-bg)] text-[var(--status-critical)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span><strong>Dashboard Telemetry Error:</strong> {summaryError}</span>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing || isLoadingSummary}
+            className="btn-telemetry btn-secondary text-xs self-start sm:self-auto flex items-center gap-1.5"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${(isRefreshing || isLoadingSummary) ? 'animate-spin' : ''}`} />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
+
       {/* 1. Header with Status & Action Buttons */}
       <DashboardHeader
-        isRefreshing={isRefreshing}
+        isRefreshing={isRefreshing || isLoadingSummary}
         onRefresh={handleRefresh}
         onAddTarget={() => setIsTargetDrawerOpen(true)}
       />
 
       {/* 2. 6-Tile Infrastructure KPI Grid */}
-      <DashboardKPIs targets={targets} />
+      <DashboardKPIs 
+        summary={summary} 
+        isLoading={isLoadingSummary} 
+      />
 
       {/* 3. Latency History Curve & Fleet Availability */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -64,7 +102,10 @@ export default function Dashboard({ targets = [], events = [], onAddTarget, onUp
           timeRange={chartTimeRange}
           onTimeRangeChange={setChartTimeRange}
         />
-        <NetworkAvailabilityCard targets={targets} />
+        <NetworkAvailabilityCard 
+          summary={summary} 
+          isLoading={isLoadingSummary} 
+        />
       </div>
 
       {/* 4. Target Health & Incident Alert Feed */}

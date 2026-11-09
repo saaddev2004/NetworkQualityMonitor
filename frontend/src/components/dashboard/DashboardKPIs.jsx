@@ -6,20 +6,27 @@ import KpiCard from '../common/KpiCard';
  * DashboardKPIs component
  * Renders the 6 core infrastructure health metric cards
  */
-export default function DashboardKPIs({ targets = [] }) {
-  const total = targets.length;
-  const online = targets.filter(t => t.current_status === 'online').length;
-  const offline = targets.filter(t => t.current_status === 'offline').length;
-  const warning = targets.filter(t => t.current_status === 'warning').length;
-  const critical = targets.filter(t => t.current_status === 'critical').length;
-  const disabled = targets.filter(t => !t.is_enabled || t.current_status === 'disabled').length;
+export default function DashboardKPIs({ summary = null, isLoading = false }) {
+  // Use real backend summary metrics exclusively. Show placeholder on loading or absence.
+  const displayVal = (val) => {
+    if (isLoading && !summary) return '...';
+    if (!summary || val === undefined || val === null) return '—';
+    return val;
+  };
+
+  const total = summary?.totalTargets;
+  const online = summary?.onlineTargets;
+  const offline = summary?.offlineTargets;
+  const warning = summary?.warningTargets;
+  const critical = summary?.criticalTargets;
+  const disabled = summary?.disabledTargets;
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {/* 1. Total Targets */}
       <KpiCard
         title="Total Targets"
-        value={total}
+        value={displayVal(total)}
         subtext="Configured endpoints"
         icon={Radio}
       />
@@ -27,7 +34,7 @@ export default function DashboardKPIs({ targets = [] }) {
       {/* 2. Online */}
       <KpiCard
         title="Online"
-        value={online}
+        value={displayVal(online)}
         subtext="Passing SLA probes"
         accentColor="var(--status-online)"
         statusDotColor="var(--status-online)"
@@ -37,7 +44,7 @@ export default function DashboardKPIs({ targets = [] }) {
       {/* 3. Offline */}
       <KpiCard
         title="Offline"
-        value={offline}
+        value={displayVal(offline)}
         subtext="Unreachable / timeout"
         accentColor="var(--status-offline)"
         statusDotColor="var(--status-offline)"
@@ -47,7 +54,7 @@ export default function DashboardKPIs({ targets = [] }) {
       {/* 4. Warning */}
       <KpiCard
         title="Warning"
-        value={warning}
+        value={displayVal(warning)}
         subtext="Latency SLA elevated"
         accentColor="var(--status-warning)"
         statusDotColor="var(--status-warning)"
@@ -57,7 +64,7 @@ export default function DashboardKPIs({ targets = [] }) {
       {/* 5. Critical */}
       <KpiCard
         title="Critical"
-        value={critical}
+        value={displayVal(critical)}
         subtext="Threshold breached"
         accentColor="var(--status-critical)"
         statusDotColor="var(--status-critical)"
@@ -67,7 +74,7 @@ export default function DashboardKPIs({ targets = [] }) {
       {/* 6. Disabled */}
       <KpiCard
         title="Disabled"
-        value={disabled}
+        value={displayVal(disabled)}
         subtext="Monitoring paused"
         accentColor="var(--status-disabled)"
         valueColor="var(--status-disabled)"

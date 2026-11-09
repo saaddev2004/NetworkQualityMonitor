@@ -11,8 +11,10 @@ import {
 import NetPulseLogo from '../NetPulseLogo';
 
 export default function Sidebar({ 
-  targetsCount = 8, 
-  activeAlertsCount = 3, 
+  targetsCount = 0, 
+  activeAlertsCount = 0, 
+  fleetConformance = null,
+  fleetConformancePercent = null,
   theme = 'dark', 
   onToggleTheme,
   isOpen = false,
@@ -93,17 +95,20 @@ export default function Sidebar({
       <div className="mt-6 p-3 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)]">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-            Fleet Conformance
+            Fleet Conformance (24h)
           </span>
           <span className="text-[11px] font-mono font-bold text-[var(--status-online)]">
-            99.42%
+            {fleetConformance || 'N/A'}
           </span>
         </div>
         <div className="w-full bg-[var(--bg-elevated)] h-1.5 rounded-full overflow-hidden">
-          <div className="bg-[var(--status-online)] h-full rounded-full" style={{ width: '99.42%' }} />
+          <div 
+            className="bg-[var(--status-online)] h-full rounded-full transition-all duration-300" 
+            style={{ width: `${Math.min(100, Math.max(0, fleetConformancePercent ?? 0))}%` }} 
+          />
         </div>
         <div className="flex items-center justify-between mt-2 text-[10px] text-[var(--text-muted)] font-mono">
-          <span>8 Monitored</span>
+          <span>{targetsCount !== null && targetsCount !== undefined ? `${targetsCount} Monitored` : '...'}</span>
           <span className="text-[var(--status-online)] flex items-center gap-1">
             <span className="status-dot" style={{ background: 'var(--status-online)' }} />
             Active

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import TopTelemetryBar from './components/layout/TopTelemetryBar';
@@ -8,6 +8,7 @@ import TargetDetails from './pages/TargetDetails';
 import Events from './pages/Events';
 import { getEvents } from './services/eventService';
 import { getTargets, createTarget, updateTarget, deleteTarget, toggleTarget, checkTarget } from './services/targetService';
+import { getDashboardSummary } from './services/dashboardService';
 import './index.css';
 
 /**
@@ -21,6 +22,9 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [eventsError, setEventsError] = useState(null);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(true);
+  const [summaryError, setSummaryError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Theme State management (Dark mode by default, toggleable to light)
@@ -79,17 +83,76 @@ export default function App() {
     }
   }, []);
 
-  // Fetch targets and events on initial mount
+  const inFlightSummaryPromiseRef = useRef(null);
+
+  // Fetch high-level summary from backend REST API (GET /api/v1/dashboard/summary)
+  const fetchDashboardSummary = useCallback(async (silent = false) => {
+    // Prevent duplicate in-flight requests by returning the active promise
+    if (inFlightSummaryPromiseRef.current) {
+      return inFlightSummaryPromiseRef.current;
+    }
+
+    if (!silent) {
+      setIsLoadingSummary(true);
+      setSummaryError(null);
+    }
+
+    const summaryPromise = (async () => {
+      try {
+        const data = await getDashboardSummary();
+        setDashboardSummary(data);
+        setSummaryError(null);
+        return data;
+      } catch (err) {
+        console.error('Failed to fetch dashboard summary from API:', err);
+        const errMsg = err.response?.data?.error?.message 
+          || (err.code === 'ERR_NETWORK' 
+            ? 'Unable to connect to backend API server (http://localhost:5000). Please ensure the backend is running.' 
+            : err.message)
+          || 'Failed to fetch dashboard summary from backend API';
+        if (!silent) {
+          setSummaryError(errMsg);
+        }
+        throw err;
+      } finally {
+        if (!silent) {
+          setIsLoadingSummary(false);
+        }
+        inFlightSummaryPromiseRef.current = null;
+      }
+    })();
+
+    inFlightSummaryPromiseRef.current = summaryPromise;
+    return summaryPromise;
+  }, []);
+
+  // Fetch targets, events, and summary on initial mount
   useEffect(() => {
     fetchTargets();
     fetchEvents();
-  }, [fetchTargets, fetchEvents]);
+    fetchDashboardSummary();
+  }, [fetchTargets, fetchEvents, fetchDashboardSummary]);
+
+  // Real dashboard refresh callback for user-triggered refresh button
+  const handleRefreshDashboard = useCallback(async () => {
+    const results = await Promise.allSettled([
+      fetchDashboardSummary(false),
+      fetchTargets(),
+      fetchEvents()
+    ]);
+    const summaryRes = results[0];
+    if (summaryRes.status === 'rejected') {
+      throw summaryRes.reason;
+    }
+  }, [fetchDashboardSummary, fetchTargets, fetchEvents]);
 
   // Add target handler (POST /api/v1/targets)
   const handleAddTarget = async (newTargetData) => {
     try {
       const created = await createTarget(newTargetData);
       setTargets(prev => [created, ...prev]);
+      // Silently refresh dashboard summary to update KPI metrics
+      fetchDashboardSummary(true).catch(e => console.error('Dashboard summary refresh error:', e));
       return created;
     } catch (err) {
       console.error('Failed to create target via API:', err);
@@ -116,6 +179,8 @@ export default function App() {
     try {
       const normalized = await updateTarget(targetId, updatedTarget);
       setTargets(prev => prev.map(t => (t.id === Number(targetId) ? { ...t, ...normalized } : t)));
+      // Silently refresh dashboard summary
+      fetchDashboardSummary(true).catch(e => console.error('Dashboard summary refresh error:', e));
       return normalized;
     } catch (err) {
       console.error('Failed to update target via API:', err);
@@ -141,6 +206,8 @@ export default function App() {
     try {
       await deleteTarget(targetId);
       setTargets(prev => prev.filter(t => t.id !== Number(targetId)));
+      // Silently refresh dashboard summary
+      fetchDashboardSummary(true).catch(e => console.error('Dashboard summary refresh error:', e));
       return true;
     } catch (err) {
       console.error('Failed to delete target via API:', err);
@@ -182,6 +249,9 @@ export default function App() {
         }
         return t;
       }));
+
+      // Silently refresh dashboard summary
+      fetchDashboardSummary(true).catch(e => console.error('Dashboard summary refresh error:', e));
 
       return result;
     } catch (err) {
@@ -231,6 +301,8 @@ export default function App() {
 
       // Silently refresh incident events to reflect any newly generated transition or recovery event
       fetchEvents().catch(e => console.error('Events refresh error:', e));
+      // Silently refresh dashboard summary to reflect updated statuses and uptimes
+      fetchDashboardSummary(true).catch(e => console.error('Dashboard summary refresh error:', e));
 
       return outcome;
     } catch (err) {
@@ -263,8 +335,10 @@ export default function App() {
 
         {/* Navigation Sidebar (Fixed on Desktop, Off-Canvas Drawer on Mobile/Tablet) */}
         <Sidebar 
-          targetsCount={targets.length} 
-          activeAlertsCount={activeAlertsCount} 
+          targetsCount={dashboardSummary?.totalTargets ?? (isLoadingSummary ? '...' : 0)} 
+          activeAlertsCount={dashboardSummary?.activeEvents ?? activeAlertsCount} 
+          fleetConformance={dashboardSummary?.overallUptime}
+          fleetConformancePercent={dashboardSummary?.overallUptimePercent}
           theme={theme}
           onToggleTheme={toggleTheme}
           isOpen={sidebarOpen}
@@ -275,7 +349,7 @@ export default function App() {
         <main className="app-content">
           {/* Top Telemetry Global Header */}
           <TopTelemetryBar
-            probesCount={targets.length}
+            probesCount={dashboardSummary?.totalTargets ?? (isLoadingSummary ? '...' : 0)}
             isEngineOnline={!targetsError}
             theme={theme}
             onToggleTheme={toggleTheme}
@@ -292,6 +366,10 @@ export default function App() {
             isLoadingEvents={isLoadingEvents}
             eventsError={eventsError}
             onRetryEvents={fetchEvents}
+            summary={dashboardSummary}
+            isLoadingSummary={isLoadingSummary}
+            summaryError={summaryError}
+            onRefreshDashboard={handleRefreshDashboard}
             onAddTarget={handleAddTarget}
             onUpdateTarget={handleUpdateTarget}
             onDeleteTarget={handleDeleteTarget}
@@ -317,6 +395,10 @@ function AnimatedRoutes({
   isLoadingEvents,
   eventsError,
   onRetryEvents,
+  summary,
+  isLoadingSummary,
+  summaryError,
+  onRefreshDashboard,
   onAddTarget, 
   onUpdateTarget, 
   onDeleteTarget, 
@@ -334,6 +416,10 @@ function AnimatedRoutes({
             <Dashboard 
               targets={targets} 
               events={events} 
+              summary={summary}
+              isLoadingSummary={isLoadingSummary}
+              summaryError={summaryError}
+              onRefresh={onRefreshDashboard}
               onAddTarget={onAddTarget}
               onUpdateTarget={onUpdateTarget}
             />

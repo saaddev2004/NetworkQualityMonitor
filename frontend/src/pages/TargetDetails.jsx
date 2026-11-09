@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Server, ArrowLeft } from 'lucide-react';
 import TargetDetailsHeader from '../components/target-details/TargetDetailsHeader';
@@ -9,7 +9,8 @@ import TargetConfigCard from '../components/target-details/TargetConfigCard';
 import RecentProbesTable from '../components/target-details/RecentProbesTable';
 import TargetDrawer from '../components/TargetDrawer';
 import ToastNotification from '../components/common/ToastNotification';
-import { generateTimeSeries, CHECK_HISTORY, generateAvailabilityHistory } from '../data/mockData';
+import { generateTimeSeries } from '../data/mockData';
+import { getTargetHistory, getTargetUptime } from '../services/targetService';
 
 /**
  * TargetDetails Page
@@ -27,22 +28,163 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
   const [toastMessage, setToastMessage] = useState(null);
   const [chartRange, setChartRange] = useState('24h');
 
-  // Synthetic 32-cycle time-series for chart
+  // Live probe history state
+  const [historyLogs, setHistoryLogs] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [historyError, setHistoryError] = useState(null);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Live uptime SLA state
+  const [uptimeData, setUptimeData] = useState(null);
+  const [isLoadingUptime, setIsLoadingUptime] = useState(true);
+  const [uptimeError, setUptimeError] = useState(null);
+
+  // Fetch initial history with cancellation guard to prevent stale overwrites
+  const loadInitialHistory = useCallback(async (silent = false) => {
+    if (!targetId || isNaN(targetId)) return;
+    if (!silent) {
+      setIsLoadingHistory(true);
+      setHistoryError(null);
+    }
+    try {
+      const data = await getTargetHistory(targetId, { limit: 20, page: 1 });
+      setHistoryLogs(data);
+      setHasMoreHistory(data.length === 20);
+    } catch (err) {
+      console.error('Failed to fetch probe history:', err);
+      const errMsg = err.response?.data?.error?.message 
+        || (err.code === 'ERR_NETWORK' 
+          ? 'Unable to connect to backend API server. Please ensure the backend is running.' 
+          : err.message)
+        || 'Failed to load probe history';
+      if (!silent) {
+        setHistoryError(errMsg);
+        setHistoryLogs([]);
+      }
+    } finally {
+      if (!silent) {
+        setIsLoadingHistory(false);
+      }
+    }
+  }, [targetId]);
+
+  // Fetch uptime SLA statistics
+  const loadUptime = useCallback(async (silent = false) => {
+    if (!targetId || isNaN(targetId)) return;
+    if (!silent) {
+      setIsLoadingUptime(true);
+      setUptimeError(null);
+    }
+    try {
+      const data = await getTargetUptime(targetId);
+      setUptimeData(data);
+    } catch (err) {
+      console.error('Failed to fetch target uptime:', err);
+      const errMsg = err.response?.data?.error?.message 
+        || (err.code === 'ERR_NETWORK' 
+          ? 'Unable to connect to backend API server. Please ensure the backend is running.' 
+          : err.message)
+        || 'Failed to load uptime statistics';
+      if (!silent) {
+        setUptimeError(errMsg);
+        setUptimeData(null);
+      }
+    } finally {
+      if (!silent) {
+        setIsLoadingUptime(false);
+      }
+    }
+  }, [targetId]);
+
+  // Load next page of probe history
+  const loadMoreHistory = async () => {
+    if (isLoadingMore || !hasMoreHistory || !targetId) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = Math.floor(historyLogs.length / 20) + 1;
+      const data = await getTargetHistory(targetId, { limit: 20, page: nextPage });
+      setHistoryLogs(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newUnique = data.filter(p => !existingIds.has(p.id));
+        return [...prev, ...newUnique];
+      });
+      setHasMoreHistory(data.length === 20);
+    } catch (err) {
+      console.error('Failed to load more probe history:', err);
+      showToast('Failed to load older probe cycles');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Fetch history and uptime when targetId changes
+  useEffect(() => {
+    let isCancelled = false;
+
+    // 1. Load History
+    setIsLoadingHistory(true);
+    setHistoryError(null);
+    setHistoryLogs([]);
+
+    getTargetHistory(targetId, { limit: 20, page: 1 })
+      .then((data) => {
+        if (!isCancelled) {
+          setHistoryLogs(data);
+          setHasMoreHistory(data.length === 20);
+          setIsLoadingHistory(false);
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          console.error('Failed to fetch probe history:', err);
+          const errMsg = err.response?.data?.error?.message 
+            || (err.code === 'ERR_NETWORK' 
+              ? 'Unable to connect to backend API server. Please ensure the backend is running.' 
+              : err.message)
+            || 'Failed to load probe history';
+          setHistoryError(errMsg);
+          setHistoryLogs([]);
+          setIsLoadingHistory(false);
+        }
+      });
+
+    // 2. Load Uptime SLA
+    setIsLoadingUptime(true);
+    setUptimeError(null);
+    setUptimeData(null);
+
+    getTargetUptime(targetId)
+      .then((data) => {
+        if (!isCancelled) {
+          setUptimeData(data);
+          setIsLoadingUptime(false);
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          console.error('Failed to fetch target uptime:', err);
+          const errMsg = err.response?.data?.error?.message 
+            || (err.code === 'ERR_NETWORK' 
+              ? 'Unable to connect to backend API server. Please ensure the backend is running.' 
+              : err.message)
+            || 'Failed to load uptime statistics';
+          setUptimeError(errMsg);
+          setUptimeData(null);
+          setIsLoadingUptime(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [targetId]);
+
+  // Synthetic 32-cycle time-series for chart (Task 11)
   const timeSeries = useMemo(() => {
     if (!target) return [];
     return generateTimeSeries(target);
   }, [target]);
-
-  // Target-specific check history
-  const checkLogs = useMemo(() => {
-    if (!target) return [];
-    return CHECK_HISTORY[target.id] || [];
-  }, [target]);
-
-  // 30-Day availability blocks
-  const availabilityDays = useMemo(() => {
-    return generateAvailabilityHistory(targetId, 30);
-  }, [targetId]);
 
   if (!target) {
     return (
@@ -82,6 +224,9 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
         ? ` (${outcome.result.responseTimeMs} ms)`
         : '';
       showToast(`Probe completed for ${target.name}: ${outcome?.status || 'done'}${latencyText}`);
+      // Refresh probe history and uptime SLA silently so the new probe cycle is immediately reflected
+      loadInitialHistory(true);
+      loadUptime(true);
     } catch (err) {
       showToast(err.message || `Manual probe failed for ${target.name}`);
     } finally {
@@ -114,6 +259,8 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
         avgLatency={avgLatency}
         minLatency={minLatency}
         maxLatency={maxLatency}
+        uptimeData={uptimeData}
+        isLoadingUptime={isLoadingUptime}
       />
 
       {/* Response Time Chart Card */}
@@ -124,10 +271,12 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
         onRangeChange={setChartRange}
       />
 
-      {/* 30-Day Availability Trend Bar */}
+      {/* Real SLA Availability Bar */}
       <TargetAvailabilityBar
-        uptimePercentage={target.uptime_percentage}
-        availabilityDays={availabilityDays}
+        uptimeData={uptimeData}
+        isLoading={isLoadingUptime}
+        error={uptimeError}
+        onRetry={() => loadUptime(false)}
       />
 
       {/* Two Column Layout: Configuration & Recent Checks History */}
@@ -136,7 +285,15 @@ export default function TargetDetails({ targets = [], events = [], onUpdateTarge
           target={target}
           onConfigure={() => setIsDrawerOpen(true)}
         />
-        <RecentProbesTable checkLogs={checkLogs} />
+        <RecentProbesTable 
+          checkLogs={historyLogs}
+          isLoading={isLoadingHistory}
+          error={historyError}
+          onRetry={() => loadInitialHistory(false)}
+          hasMore={hasMoreHistory}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={loadMoreHistory}
+        />
       </div>
 
       {/* Target Configuration Drawer */}

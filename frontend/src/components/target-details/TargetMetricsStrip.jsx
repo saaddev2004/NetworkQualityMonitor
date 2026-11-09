@@ -8,8 +8,22 @@ export default function TargetMetricsStrip({
   target,
   avgLatency = 0,
   minLatency = 0,
-  maxLatency = 0
+  maxLatency = 0,
+  uptimeData = null,
+  isLoadingUptime = false
 }) {
+  const uptimeNum = uptimeData?.uptimePercent !== null && uptimeData?.uptimePercent !== undefined 
+    ? Number(uptimeData.uptimePercent) 
+    : parseFloat(target?.uptime_percentage);
+
+  const uptimeColor = isNaN(uptimeNum) || uptimeNum === null
+    ? 'var(--text-muted)'
+    : uptimeNum >= 99
+      ? 'var(--status-online)'
+      : uptimeNum >= 95
+        ? 'var(--status-warning)'
+        : 'var(--status-critical)';
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       {/* 1. Current Latency */}
@@ -25,16 +39,20 @@ export default function TargetMetricsStrip({
         </span>
       </div>
 
-      {/* 2. 24h Uptime SLA */}
+      {/* 2. Uptime SLA */}
       <div className="telemetry-card p-3.5">
         <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
-          24h Uptime SLA
+          Uptime SLA
         </span>
-        <div className="text-2xl font-bold font-mono text-[var(--status-online)] mt-1">
-          {target.uptime_percentage}
+        <div className="text-2xl font-bold font-mono mt-1" style={{ color: uptimeColor }}>
+          {isLoadingUptime ? '...' : (uptimeData?.uptimePercentage || target.uptime_percentage || '—')}
         </div>
-        <span className="text-[11px] text-[var(--text-muted)] mt-0.5 block">
-          30-day compliance
+        <span className="text-[11px] text-[var(--text-muted)] mt-0.5 block truncate">
+          {isLoadingUptime 
+            ? 'Calculating SLA...' 
+            : uptimeData 
+              ? `${uptimeData.successfulChecks} / ${uptimeData.totalEligibleChecks} passing` 
+              : 'Historical SLA compliance'}
         </span>
       </div>
 

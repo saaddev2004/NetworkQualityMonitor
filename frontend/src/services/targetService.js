@@ -250,3 +250,108 @@ export async function checkTarget(targetId) {
   const response = await api.post(`/targets/${targetId}/check`);
   return response.data;
 }
+
+/**
+ * Normalizes a probe result record from the monitoring_results table
+ * 
+ * @param {Object} result - Raw database result row
+ * @returns {Object} Normalized probe result object
+ */
+export function mapProbeResultFromApi(result) {
+  if (!result) return null;
+
+  return {
+    ...result,
+    id: Number(result.id),
+    target_id: Number(result.target_id),
+    checked_at: safeIsoDate(result.checked_at, new Date().toISOString()),
+    is_available: Boolean(result.is_available),
+    response_time_ms: result.response_time_ms !== null && result.response_time_ms !== undefined
+      ? Number(result.response_time_ms)
+      : null,
+    http_status_code: result.http_status_code !== null && result.http_status_code !== undefined
+      ? Number(result.http_status_code)
+      : null,
+    result_status: result.result_status || 'unknown',
+    error_type: result.error_type || null,
+    error_message: result.error_message || null,
+    created_at: safeIsoDate(result.created_at, new Date().toISOString())
+  };
+}
+
+/**
+ * Fetches historical monitoring probe records for a specific target
+ * Endpoint: GET /api/v1/targets/:id/history
+ * 
+ * @param {number|string} targetId - ID of target
+ * @param {Object} [params={}] - Query parameters (page, limit, from, to)
+ * @returns {Promise<Array<Object>>} Normalized probe history records
+ */
+export async function getTargetHistory(targetId, params = {}) {
+  if (!targetId) {
+    throw new Error('Target ID is required to fetch target history');
+  }
+
+  const queryParams = {};
+  if (params.page !== undefined) queryParams.page = Number(params.page);
+  if (params.limit !== undefined) queryParams.limit = Number(params.limit);
+  if (params.from !== undefined) queryParams.from = params.from;
+  if (params.to !== undefined) queryParams.to = params.to;
+
+  const response = await api.get(`/targets/${targetId}/history`, { params: queryParams });
+  const data = Array.isArray(response.data) ? response.data : [];
+  return data.map(mapProbeResultFromApi);
+}
+
+/**
+ * Normalizes uptime SLA statistics returned by the backend API
+ * 
+ * @param {Object} data - Raw uptime data from backend
+ * @returns {Object} Normalized uptime object
+ */
+export function mapUptimeFromApi(data) {
+  if (!data) {
+    return {
+      uptimePercentage: 'N/A',
+      uptimePercent: null,
+      successfulChecks: 0,
+      totalEligibleChecks: 0
+    };
+  }
+
+  const total = Number(data.totalEligibleChecks) || 0;
+  const success = Number(data.successfulChecks) || 0;
+  const percent = data.uptimePercent !== undefined && data.uptimePercent !== null
+    ? Number(data.uptimePercent)
+    : (total > 0 ? Number(((success / total) * 100).toFixed(2)) : 0);
+
+  const formattedPercentage = data.uptimePercentage || (total > 0 ? `${percent.toFixed(2)}%` : 'N/A');
+
+  return {
+    uptimePercentage: formattedPercentage,
+    uptimePercent: percent,
+    successfulChecks: success,
+    totalEligibleChecks: total
+  };
+}
+
+/**
+ * Fetches calculated uptime SLA statistics for a specific monitored target
+ * Endpoint: GET /api/v1/targets/:id/uptime
+ * 
+ * @param {number|string} targetId - ID of target
+ * @param {Object} [params={}] - Optional date filters (from, to)
+ * @returns {Promise<{ uptimePercentage: string, uptimePercent: number, successfulChecks: number, totalEligibleChecks: number }>}
+ */
+export async function getTargetUptime(targetId, params = {}) {
+  if (!targetId) {
+    throw new Error('Target ID is required to fetch target uptime');
+  }
+
+  const queryParams = {};
+  if (params.from) queryParams.from = params.from;
+  if (params.to) queryParams.to = params.to;
+
+  const response = await api.get(`/targets/${targetId}/uptime`, { params: queryParams });
+  return mapUptimeFromApi(response.data);
+}
