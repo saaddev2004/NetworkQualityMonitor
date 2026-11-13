@@ -3,3 +3,7 @@ node_modules/
 build/
 dist/
 .DS_Store
+backend/certs/
+
+backend/local-data-backup.sql
+backend/migrate-data.js
