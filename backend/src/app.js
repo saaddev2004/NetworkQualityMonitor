@@ -1,8 +1,10 @@
+
 import './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import pool from './config/db.js';
 import targetRoutes from './routes/targetRoutes.js';
+import monitoringRoutes from './routes/monitoringRoutes.js';
 import { getDashboardSummary } from './controllers/dashboardController.js';
 import { getEvents } from './controllers/eventController.js';
 import { getSchedulerStatus } from './scheduler/scheduler.js';
@@ -18,6 +20,7 @@ app.get('/api/v1/health', async (req, res) => {
     try {
         await pool.query('SELECT 1');
         const scheduler = getSchedulerStatus();
+
         res.status(200).json({
             status: 'ok',
             message: 'Application and Database are healthy',
@@ -43,6 +46,7 @@ app.get('/api/v1/health', async (req, res) => {
         });
     } catch (error) {
         console.error('Database connection error:', error.message);
+
         res.status(503).json({
             error: {
                 code: 'DB_UNAVAILABLE',
@@ -55,11 +59,15 @@ app.get('/api/v1/health', async (req, res) => {
 app.get('/api/v1/dashboard/summary', getDashboardSummary);
 app.get('/api/v1/events', getEvents);
 app.use('/api/v1/targets', targetRoutes);
+app.use('/api/v1/monitoring', monitoringRoutes);
 
 // Unknown API route -> JSON 404 (instead of Express's default HTML page)
 app.use('/api', (req, res) => {
     res.status(404).json({
-        error: { code: 'NOT_FOUND', message: `Route ${req.method} ${req.originalUrl} not found` }
+        error: {
+            code: 'NOT_FOUND',
+            message: `Route ${req.method} ${req.originalUrl} not found`
+        }
     });
 });
 
@@ -67,10 +75,15 @@ app.use('/api', (req, res) => {
 app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') {
         return res.status(400).json({
-            error: { code: 'INVALID_JSON', message: 'Request body is not valid JSON' }
+            error: {
+                code: 'INVALID_JSON',
+                message: 'Request body is not valid JSON'
+            }
         });
     }
+
     console.error(err.stack);
+
     res.status(500).json({
         error: {
             code: 'INTERNAL_SERVER_ERROR',
